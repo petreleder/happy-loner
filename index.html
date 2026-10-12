@@ -311,6 +311,9 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--yellow);outline
   .carousel{flex:none;height:auto;padding:24px var(--gutter);align-items:stretch}
   .card{height:auto}
   .card .btn{margin-top:auto}
+  /* game: counter rides up into the top bar row */
+  .hud{margin-top:-46px;padding-top:0;position:relative;z-index:1;pointer-events:none}
+  .hud .timer{pointer-events:auto}
   .menu-foot{padding:8px var(--gutter) 0}
 }
 @media (orientation:landscape) and (max-height:560px){
