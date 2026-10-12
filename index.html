@@ -233,6 +233,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--yellow);outline
 .lb-list li time{font-size:12px;color:var(--muted)}
 .lb-list li.me{background:rgba(255,195,54,.1)}
 .lb-list li.me span{font-weight:700}
+.lb-list li span em{font-style:normal;font-weight:500;color:var(--muted)}
 .lb-list li.gap{display:block;padding:0 6px;color:var(--dim)}
 .lb-total{margin:4px 6px;font-size:11px;color:var(--dim)}
 .best-inner .empty{padding:10px 0 6px;font-size:13px}
@@ -903,8 +904,8 @@ function loadBoard(mode){
   const draw = d => {
     if (!d){ box.innerHTML = `<p class="empty">${STR.lbOff}</p>`; return; }
     if (!d.top.length){ box.innerHTML = `<p class="empty">${STR.lbEmpty}</p>`; return; }
-    let rows = d.top.map(e => `<li class="${e.me?'me':''}"><i>${e.rank}.</i><b>${pad2(e.pegs)}</b><span>${esc(e.player)}</span><time>${fmt(e.time)}</time></li>`);
-    if (d.me && d.me.rank > d.top.length) rows.push(`<li class="gap">…</li><li class="me"><i>${d.me.rank}.</i><b>${pad2(d.me.pegs)}</b><span>${esc(d.me.player)}</span><time>${fmt(d.me.time)}</time></li>`);
+    let rows = d.top.map(e => `<li class="${e.me?'me':''}"><i>${e.rank}.</i><b>${pad2(e.pegs)}</b><span>${esc(e.player)}${e.me?' <em>(you)</em>':''}</span><time>${fmt(e.time)}</time></li>`);
+    if (d.me && d.me.rank > d.top.length) rows.push(`<li class="gap">…</li><li class="me"><i>${d.me.rank}.</i><b>${pad2(d.me.pegs)}</b><span>${esc(d.me.player)} <em>(you)</em></span><time>${fmt(d.me.time)}</time></li>`);
     box.innerHTML = `<ol class="lb-list">${rows.join('')}</ol><p class="lb-total">${d.total} ${d.total===1?'player':'players'}</p>`;
   };
   const c = lbCache[mode];
@@ -930,8 +931,7 @@ function renderScores(){
         <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
       </button>
       <div class="best-body" id="hist-${m.id}"><div class="best-inner">
-        <h5 class="sec-title">Leaderboard</h5><div class="lb" data-lb="${m.id}"><p class="empty">Loading…</p></div>
-        <h5 class="sec-title">Your games · ${games.length}</h5>${list}</div></div>
+        <h5 class="sec-title">Leaderboard</h5><div class="lb" data-lb="${m.id}"><p class="empty">Loading…</p></div></div></div>
     </section>`; }).join('');
   $('#scoresBody').innerHTML = `<h5 class="sec-title">${esc(store.player)}’s best</h5>${cards}`
     + (store.history.length ? `<button class="danger" id="clearScores">Clear scores</button>` : '');
