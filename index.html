@@ -305,7 +305,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--yellow);outline
   .card:not(:has([data-start])) {opacity:.55}
   .dots{display:none}
   #menu{justify-content:center;gap:8px}
-  .menu-head{padding-top:0;padding-bottom:28px}
+  .menu-head{padding-top:clamp(20px,calc(12vh - 40px),72px);padding-bottom:20px}
   .menu-head .wordmark{width:300px}
   /* desktop: cards size to their content (never clip START), all stretched to the tallest */
   .carousel{flex:none;height:auto;padding:24px var(--gutter);align-items:stretch}
