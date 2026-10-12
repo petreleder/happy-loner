@@ -177,6 +177,9 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--yellow);outline
 .stat b{display:block;font-size:26px;font-weight:900;color:var(--yellow);font-variant-numeric:tabular-nums}
 .stat span{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
 /* result popup – larger, score is the hero */
+#result .res-close{position:absolute;z-index:3;top:12px;right:12px;width:40px;height:40px;display:grid;place-items:center;border-radius:50%;color:var(--muted)}
+#result .res-close:hover{background:rgba(255,255,255,.07);color:var(--text)}
+#result .res-close svg{width:22px;height:22px}
 #result .stack{position:relative;width:100%;max-width:420px;display:grid}
 #result .box{position:relative;z-index:0;max-width:420px;border-radius:32px;padding:36px 28px 28px}
 #result .stack.has-trophy .box{padding-top:76px}
@@ -390,6 +393,9 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--yellow);outline
           <circle cx="38" cy="50" r="2" fill="#FFDF43"/>
         </svg></div>
       <div class="box">
+        <button class="res-close" id="resClose" aria-label="Back to menu">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
         <div id="resBadge"></div>
         <h3 id="resTitle" hidden></h3>
         <p class="sub" id="resSub"></p>
@@ -397,7 +403,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--yellow);outline
         <div class="time-big"><b id="resTime">00:00</b></div>
         <div class="row">
           <button class="btn btn-primary" id="resAgain">Play again</button>
-          <button class="btn btn-ghost" id="resMenu">Back to menu</button>
+          <button class="btn btn-ghost" id="resMenu">Best Score</button>
         </div>
       </div>
       </div>
@@ -913,7 +919,8 @@ $('#restart').onclick = () => {
   stopClock(); openConfirm(STR.restartQ, STR.restartYes, () => startGame(G.mode.id), resumeIfRunning);
 };
 $('#resAgain').onclick = () => startGame(G.mode.id);
-$('#resMenu').onclick = leaveGame;
+$('#resClose').onclick = leaveGame;
+$('#resMenu').onclick = () => { leaveGame(); renderScores(); show('scores'); };
 let rz; addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(repositionAll, 120); });
 document.addEventListener('visibilitychange', () => { if (!G || G.over || !G.moves || !$('#confirm').hidden) return; document.hidden ? stopClock() : startClock(); });
 
