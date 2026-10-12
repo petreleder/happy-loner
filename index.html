@@ -198,6 +198,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--yellow);outline
 #result .badge{animation:pop .5s .15s cubic-bezier(.2,1.6,.4,1) both}
 #confetti{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:30}
 .timer{cursor:default;padding:4px 8px;border-radius:6px}
+#result .rank{margin:-14px 0 22px;font-size:13px;font-weight:600;color:var(--muted);min-height:1.2em}
 #result .time-big{margin:12px 0 28px;color:var(--text);font-weight:900;font-size:18px;line-height:1;font-variant-numeric:tabular-nums}
 #result .time-big b{font-size:clamp(30px,9vw,38px)}
 #result .row{flex-direction:column;gap:12px}
@@ -223,6 +224,17 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--yellow);outline
 .best-card.open .best-inner{padding-bottom:10px}
 .best-inner .sec-title{padding-top:14px;border-top:1px solid #22303F}
 .best-inner .hist li:last-child{border-bottom:0}
+.best-inner .lb + .sec-title{margin-top:10px}
+.lb-list{list-style:none;margin:6px 0 0;padding:0}
+.lb-list li{display:grid;grid-template-columns:2.2em 2.2em 1fr auto;gap:10px;align-items:baseline;padding:9px 6px;border-radius:10px;font-size:14px;font-variant-numeric:tabular-nums}
+.lb-list li i{font-style:normal;color:var(--dim);font-size:12px}
+.lb-list li b{font-weight:900;color:var(--yellow);font-size:16px}
+.lb-list li span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lb-list li time{font-size:12px;color:var(--muted)}
+.lb-list li.me{background:rgba(255,195,54,.1)}
+.lb-list li.me span{font-weight:700}
+.lb-list li.gap{display:block;padding:0 6px;color:var(--dim)}
+.lb-total{margin:4px 6px;font-size:11px;color:var(--dim)}
 .best-inner .empty{padding:10px 0 6px;font-size:13px}
 .best-card .mini{flex:none;width:64px;height:64px;border-radius:50%;border:3px solid var(--yellow);display:grid;place-items:center;
   font-weight:900;font-size:26px;color:var(--yellow);font-variant-numeric:tabular-nums}
@@ -402,6 +414,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--yellow);outline
         <p class="sub" id="resSub"></p>
         <div class="score-big"><b id="resPegs">0</b> score</div>
         <div class="time-big"><b id="resTime">00:00</b></div>
+        <p class="rank" id="resRank" aria-live="polite"></p>
         <div class="row">
           <button class="btn btn-primary" id="resAgain">Play again</button>
           <button class="btn btn-ghost" id="resMenu">Best Score</button>
@@ -493,6 +506,9 @@ const STR = {
   endTitle: n => n===1 ? '1 peg left' : `${n} pegs left`,
   endSub: 'No more jumps possible.',
   newBest: 'New record',
+  rank: (r,t) => `#${r} of ${t} ${t===1?'player':'players'} worldwide`,
+  lbOff: 'The online leaderboard is available on happy-loner.vercel.app.',
+  lbEmpty: 'No one has finished this board yet. Be the first!',
   quitQ: 'Quit this game? Your progress on this board will be lost.',
   quitYes: 'Quit',
   restartQ: 'Restart this game? The current board will be lost.',
@@ -514,6 +530,19 @@ function load(){
 }
 function save(d){ try{ localStorage.setItem(KEY, JSON.stringify(d)); }catch(e){} }
 let store = load();
+// anonymous player id for the online leaderboard (no account needed)
+if (!store.pid){
+  store.pid = (crypto.randomUUID ? crypto.randomUUID() : 'p-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2,10));
+  save(store);
+}
+const API = '/api/scores';
+const lbCache = {};
+async function api(method, q, body){
+  const r = await fetch(API + (q ? '?' + new URLSearchParams(q) : ''), {method, headers: body ? {'Content-Type':'application/json'} : undefined, body: body ? JSON.stringify(body) : undefined});
+  const j = await r.json().catch(()=>({}));
+  if (!r.ok) throw new Error(j.error || 'http ' + r.status);
+  return j;
+}
 const better = (a,b) => !b || a.pegs < b.pegs || (a.pegs === b.pegs && a.time < b.time);
 
 /* ---------- helpers ---------- */
@@ -645,7 +674,7 @@ function startGame(modeId, restore){
   const b = parse(mode);
   stopClock();
   G = { mode, b, pegs: restore ? new Set(restore.pegs) : new Set(b.pegs), sel:null,
-        elapsed: restore ? restore.elapsed : 0, started: null, moves: restore ? restore.moves : 0, over:false, pegEls:new Map() };
+        elapsed: restore ? restore.elapsed : 0, started: null, moves: restore ? restore.moves : 0, log: restore && restore.log ? restore.log : [], over:false, pegEls:new Map() };
   $('#gameTitle').textContent = '';
   $('#result').hidden = true; $('#confirm').hidden = true;
   $('#timer').textContent = fmt(G.elapsed);
@@ -751,6 +780,7 @@ async function jump(m){
   el.classList.add('fly'); el.style.left = x+'px'; el.style.top = y+'px';
   G.pegs.delete(m.from); G.pegs.delete(m.over); G.pegs.add(m.to);
   G.pegEls.delete(m.from); G.pegEls.delete(m.over); G.pegEls.set(m.to, el);
+  { const a = G.b.cells[m.from], t = G.b.cells[m.to]; G.log.push([a.r, a.c, t.r, t.c]); }
   G.moves++; G.sel = null;
   await wait(130);
   // jumped peg collapses with 4 diagonal shards
@@ -786,6 +816,10 @@ async function endGame(lastK){
   if (isBest) store.best[g.mode.id] = res;
   store.history.unshift(res); store.history = store.history.slice(0,30);
   save(store); renderFoot();
+  $('#resRank').textContent = '';
+  api('POST', null, {pid:store.pid, player:store.player, mode:g.mode.id, time:Math.round(g.elapsed), moves:g.log})
+    .then(r => { delete lbCache[g.mode.id]; if (G === g) $('#resRank').textContent = STR.rank(r.rank, r.total); })
+    .catch(()=>{});
   await wait(1300);
   if (G !== g) return;
   showResult({pegs, time:g.elapsed, isBest, win, goalMiss: pegs===1 && !!g.mode.goal && !win});
@@ -864,6 +898,19 @@ function startClock(){
 function stopClock(){ if (tick) clearInterval(tick); tick = null; if (G && G.started!=null){ G.elapsed = performance.now()-G.started; G.started = null; } }
 
 /* ---------- SCORES ---------- */
+function loadBoard(mode){
+  const box = document.querySelector(`[data-lb="${mode}"]`); if (!box) return;
+  const draw = d => {
+    if (!d){ box.innerHTML = `<p class="empty">${STR.lbOff}</p>`; return; }
+    if (!d.top.length){ box.innerHTML = `<p class="empty">${STR.lbEmpty}</p>`; return; }
+    let rows = d.top.map(e => `<li class="${e.me?'me':''}"><i>${e.rank}.</i><b>${pad2(e.pegs)}</b><span>${esc(e.player)}</span><time>${fmt(e.time)}</time></li>`);
+    if (d.me && d.me.rank > d.top.length) rows.push(`<li class="gap">…</li><li class="me"><i>${d.me.rank}.</i><b>${pad2(d.me.pegs)}</b><span>${esc(d.me.player)}</span><time>${fmt(d.me.time)}</time></li>`);
+    box.innerHTML = `<ol class="lb-list">${rows.join('')}</ol><p class="lb-total">${d.total} ${d.total===1?'player':'players'}</p>`;
+  };
+  const c = lbCache[mode];
+  if (c && Date.now() - c.t < 30000) return draw(c.d);
+  api('GET', {mode, pid:store.pid}).then(d => { lbCache[mode] = {t:Date.now(), d}; draw(d); }).catch(() => draw(null));
+}
 function renderScores(){
   const open = renderScores.open ?? new Set([MODES[0].id]);   // first category open by default
   renderScores.open = open;
@@ -883,7 +930,8 @@ function renderScores(){
         <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
       </button>
       <div class="best-body" id="hist-${m.id}"><div class="best-inner">
-        <h5 class="sec-title">Recent games · ${games.length}</h5>${list}</div></div>
+        <h5 class="sec-title">Leaderboard</h5><div class="lb" data-lb="${m.id}"><p class="empty">Loading…</p></div>
+        <h5 class="sec-title">Your games · ${games.length}</h5>${list}</div></div>
     </section>`; }).join('');
   $('#scoresBody').innerHTML = `<h5 class="sec-title">${esc(store.player)}’s best</h5>${cards}`
     + (store.history.length ? `<button class="danger" id="clearScores">Clear scores</button>` : '');
@@ -891,7 +939,9 @@ function renderScores(){
     const id = btn.dataset.mode, card = btn.parentElement, on = !card.classList.contains('open');
     card.classList.toggle('open', on); btn.setAttribute('aria-expanded', on);
     on ? open.add(id) : open.delete(id);
+    if (on) loadBoard(id);
   });
+  open.forEach(loadBoard);
   const c = $('#clearScores');
   if (c) c.onclick = () => openConfirm(STR.clearQ, STR.clearYes, () => { store.best = {}; store.history = []; save(store); renderScores(); });
 }
@@ -928,7 +978,7 @@ let rz; addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(rep
 document.addEventListener('visibilitychange', () => { if (!G || G.over || !G.moves || !$('#confirm').hidden) return; document.hidden ? stopClock() : startClock(); });
 
 /* ---------- boot (keeps a running game across live updates) ---------- */
-function snapshot(){ return G && !G.over ? {mode:G.mode.id, pegs:[...G.pegs], elapsed:G.elapsed, moves:G.moves} : {}; }
+function snapshot(){ return G && !G.over ? {mode:G.mode.id, pegs:[...G.pegs], elapsed:G.elapsed, moves:G.moves, log:G.log} : {}; }
 window.claude?.hot?.snapshot?.(snapshot);
 function start(data){
   buildMenu();
