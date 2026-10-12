@@ -1,0 +1,929 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Happy Loner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap">
+<style>
+/* Layout: four screens (intro / menu / game / scores) swapped in place inside one column, max 1000px.
+   Breakpoints: <600 phone · 600–899 tablet · ≥900 desktop · short landscape phones get the side-panel game layout.
+   Values from the XD file (360×640 artboards). */
+:root{
+  --bg:#131F2C;          /* Rectangle 2 – app background */
+  --bg-deep:#0D161F;     /* gradient top */
+  --frame:#425161;       /* "pole" – rgba(206,230,255,.25) over bg */
+  --line:#42515F;        /* card outline, dots */
+  --panel:#1A2838;       /* popups */
+  --text:#FFFFFF;
+  --muted:#BDC6D1;       /* body copy, peg body */
+  --dim:#97A3AF;
+  --yellow:#FFC336;      /* counter ring, best score */
+  --yellow-btn:#FFBC00;  /* START */
+  --pink:#FA155A;        /* selection ring */
+  --font:"Montserrat", "Segoe UI", system-ui, sans-serif;
+  --gutter:16px;
+  color-scheme:dark;
+}
+[hidden]{display:none!important}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+html{background:var(--bg)}
+body{margin:0;background:linear-gradient(var(--bg-deep),var(--bg)) fixed;background-color:var(--bg);color:var(--text);font-family:var(--font);
+  -webkit-user-select:none;user-select:none;touch-action:manipulation;overflow:hidden}
+button,input{font:inherit;color:inherit}
+button{background:none;border:0;padding:0;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:2px solid var(--yellow);outline-offset:3px}
+
+#app{position:relative;height:100%;max-width:1000px;margin:0 auto;overflow:hidden}
+.screen{position:absolute;inset:0;display:flex;flex-direction:column;
+  transition:opacity .28s ease, transform .28s ease}
+.screen[aria-hidden="true"]{opacity:0;pointer-events:none;transform:translateX(24px);visibility:hidden;transition:opacity .28s, transform .28s, visibility 0s .28s}
+.screen.left[aria-hidden="true"]{transform:translateX(-24px)}
+
+/* ---------- buttons ---------- */
+.btn{height:44px;min-width:118px;padding:0 22px;border-radius:8px;font-weight:700;font-size:15px;letter-spacing:.03em}
+.btn-primary{background:var(--yellow-btn);color:var(--bg)}
+.btn-primary:active{transform:translateY(1px)}
+.btn-primary[disabled]{background:transparent;color:var(--dim);border:2px dashed var(--line);cursor:default}
+.btn-ghost{border:2px solid var(--text);color:var(--text);min-width:152px}
+
+/* ---------- App bar ---------- */
+.appbar{flex:none;height:56px;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;
+  padding:0 6px;background:none}
+.appbar h1{margin:0;text-align:center;font-weight:400;font-size:20px;letter-spacing:.01em;white-space:nowrap}
+.bar-btn{height:44px;display:inline-flex;align-items:center;gap:6px;padding:0 10px;border-radius:8px;
+  font-size:11px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;white-space:nowrap}
+.bar-btn:hover{background:rgba(255,255,255,.06)}
+.bar-btn svg{width:22px;height:22px;flex:none}
+.bar-btn.end{justify-self:end}
+.bar-btn.start{justify-self:start}
+
+/* ---------- INTRO ---------- */
+#intro{align-items:center;justify-content:center;gap:clamp(20px,5vh,44px);padding:24px var(--gutter)}
+/* logo = ball (animated) + wordmark (static); wordmark is 270/366 of the ball's width */
+.lockup{--w:200px;display:flex;flex-direction:column;align-items:center;gap:calc(var(--w)*.05)}
+.lockup img{display:block;height:auto}
+.lockup .ball{width:var(--w)}
+.lockup .word{width:calc(var(--w)*.738)}
+#intro .lockup{--w:clamp(210px,62vw,320px)}
+#intro .lockup .ball{animation:bob 3.2s ease-in-out infinite}
+@keyframes bob{50%{transform:translateY(-6px)}}
+.nick{width:100%;max-width:320px;display:flex;flex-direction:column;gap:10px}
+.nick label{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
+.nick input{height:52px;border-radius:10px;border:2px solid var(--line);background:rgba(0,0,0,.25);padding:0 16px;
+  font-size:18px;font-weight:700;letter-spacing:.02em;-webkit-user-select:text;user-select:text;outline:none;transition:border-color .2s}
+.nick input:focus{border-color:var(--yellow)}
+.nick input.bad{border-color:var(--pink)}
+.nick .help{margin:0;font-size:12px;line-height:1.5;color:var(--dim);min-height:1.5em}
+.nick .help.err{color:#FF6B93}
+.nick .btn{width:100%;margin-top:22px;height:50px;font-size:16px}
+
+/* ---------- MENU ---------- */
+.menu-head{flex:none;display:flex;flex-direction:column;align-items:center;gap:8px;padding:clamp(14px,4vh,40px) var(--gutter) clamp(12px,3vh,28px)}
+.menu-head .wordmark{display:block;width:min(240px,64vw);height:auto}
+.player{font-size:13px;color:var(--muted)}
+.player b{color:var(--text)}
+.player button{margin-left:6px;color:var(--yellow);font-weight:700;font-size:12px;text-decoration:underline;text-underline-offset:3px;padding:6px 2px}
+.carousel{flex:1;min-height:0;display:flex;gap:16px;overflow-x:auto;scroll-snap-type:x mandatory;
+  padding:clamp(10px,2.5vh,24px) calc(50% - min(150px,39vw)) 12px;scrollbar-width:none;align-items:center}
+.carousel::-webkit-scrollbar{display:none}
+.card{--k:1;flex:none;scroll-snap-align:center;width:min(300px,78vw);height:min(460px,100%);
+  border:2px solid var(--line);border-radius:32px;padding:18px 18px 22px;
+  display:flex;flex-direction:column;align-items:center;text-align:center;gap:10px;
+  /* --k: 0 = centred, 1 = one card away; driven by scroll position, so no transition jitter */
+  opacity:calc(1 - .55*var(--k));transform:scale(calc(1 - .08*var(--k)));will-change:transform}
+.card .art{flex:1;min-height:0;width:100%;display:grid;place-items:center}
+.card .art svg{width:100%;height:100%;max-width:160px;max-height:160px}
+.card h2{margin:0;font-size:18px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+.card p{margin:0;font-size:12px;line-height:1.5;color:var(--muted);text-wrap:balance}
+.dots{flex:none;display:flex;justify-content:center;gap:8px;padding:0 0 30px}
+.dots i{width:12px;height:12px;border-radius:8px;border:2px solid var(--line);transition:width .25s, background .25s, border-color .25s}
+.dots i.on{width:32px;background:var(--yellow);border-color:var(--yellow)}
+.menu-foot{flex:none;display:flex;flex-direction:column;align-items:center;gap:10px;padding:0 var(--gutter) calc(18px + env(safe-area-inset-bottom,0px))}
+
+/* ---------- GAME ---------- */
+.game-body{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr) auto;
+  grid-template-areas:"hud" "stage" "foot"}
+.hud{grid-area:hud;display:flex;flex-direction:column;align-items:center;gap:6px;padding:clamp(10px,3vh,26px) var(--gutter) 0}
+.counter{width:88px;height:88px;border-radius:50%;border:4px solid var(--yellow);
+  display:flex;justify-content:center;align-items:center;color:var(--yellow);font-weight:900;font-size:40px;line-height:1;font-variant-numeric:tabular-nums}
+.digit{position:relative;display:grid;overflow:hidden;height:1.2em;width:.68em}
+.digit span{grid-area:1/1;align-self:center;justify-self:center}
+.digit .out{animation:numOut .34s ease forwards}
+.digit .in{animation:numIn .34s ease both}
+@keyframes numOut{to{transform:translateY(80%);opacity:0}}
+@keyframes numIn{from{transform:translateY(-80%);opacity:0}}
+.timer{font-size:13px;font-weight:600;color:var(--dim);font-variant-numeric:tabular-nums;letter-spacing:.06em}
+.stage{grid-area:stage;min-height:0;display:grid;place-items:center;padding:8px var(--gutter)}
+.board{position:relative}
+.board > svg.frame{position:absolute;inset:0;overflow:visible}
+.cell{position:absolute;border-radius:calc(var(--p)*.15);background:var(--bg)}
+.cell.rock{background:#1C2836;box-shadow:inset 0 0 0 2px #26364A}
+.cell.rock::before{content:"";position:absolute;inset:22%;border-radius:30%;
+  background:linear-gradient(140deg,#5B6B7C,#2F3D4D);box-shadow:inset 0 -3px 0 rgba(0,0,0,.25)}
+.cell.goal::before{content:"";position:absolute;inset:38%;border-radius:50%;border:2px solid var(--yellow);opacity:.6}
+.cell.goal{box-shadow:inset 0 0 0 2px rgba(255,195,54,.7)}
+.hint{position:absolute;pointer-events:none;width:calc(var(--p)*.7);height:calc(var(--p)*.7);margin:calc(var(--p)*-.35) 0 0 calc(var(--p)*-.35)}
+.hint svg{width:100%;height:100%;animation:spin 6s linear infinite;overflow:visible}
+.hint circle{fill:none;stroke:#fff;stroke-opacity:.3;stroke-width:2;stroke-linecap:round;stroke-dasharray:5.5 7.07;transition:stroke .15s, stroke-opacity .15s}
+.hint.hot circle{stroke:var(--pink);stroke-opacity:1;stroke-dasharray:none}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.peg{position:absolute;width:calc(var(--p)*.6);height:calc(var(--p)*.6);margin:calc(var(--p)*-.3) 0 0 calc(var(--p)*-.3);
+  pointer-events:none;transition:left .26s cubic-bezier(.5,0,.3,1), top .26s cubic-bezier(.5,0,.3,1)}
+.peg svg{width:100%;height:100%;display:block;overflow:visible}
+.peg .body{fill:var(--muted);transition:fill .7s ease}
+.peg .ring{fill:none;stroke:var(--pink);stroke-width:2;opacity:0;transition:opacity .15s}
+.peg .smile{fill:none;stroke:#441D00;stroke-width:2.2;stroke-linecap:round;opacity:0;transition:opacity .5s .5s}
+.peg.sel .ring{opacity:1}
+.peg.sel svg{animation:pulse 1.1s ease-in-out infinite}
+@keyframes pulse{50%{transform:scale(1.07)}}
+.peg.fly{z-index:3}
+.peg.fly svg{animation:hop .26s ease}
+@keyframes hop{50%{transform:scale(1.22)}}
+.peg.gold .body{fill:var(--yellow)}
+.peg.gold .ring{opacity:0;transition:opacity .9s}
+.peg.loner .smile{opacity:1}
+.peg.dying svg{animation:die .3s ease forwards}
+@keyframes die{60%{transform:scale(.45);opacity:1}100%{transform:scale(0);opacity:0}}
+.shard{position:absolute;width:calc(var(--p)*.16);height:2px;border-radius:2px;background:#5B6B7C;pointer-events:none;
+  margin-top:-1px;transform-origin:0 50%;animation:shard .42s ease-out forwards}
+@keyframes shard{from{transform:rotate(var(--a)) translateX(calc(var(--p)*.08));opacity:1}
+  to{transform:rotate(var(--a)) translateX(calc(var(--p)*.34));opacity:0}}
+.hit{position:absolute;inset:0;z-index:4}
+
+.game-foot{grid-area:foot;text-align:center;padding:4px var(--gutter) calc(22px + env(safe-area-inset-bottom,0px));
+  font-weight:700;font-size:16px;color:var(--text);font-variant-numeric:tabular-nums}
+.game-foot small{display:block;margin-top:2px;font-size:12px;font-weight:500;color:var(--dim)}
+
+/* ---------- modal (result + confirm) ---------- */
+.modal{position:fixed;inset:0;z-index:20;display:grid;place-items:center;padding:var(--gutter);
+  background:rgba(5,10,16,.55);-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px);animation:fadeIn .25s ease}
+.modal .box{width:100%;max-width:340px;background:var(--panel);border-radius:24px;padding:26px 22px 22px;text-align:center;
+  box-shadow:0 24px 60px rgba(0,0,0,.5);animation:pop .38s cubic-bezier(.2,1.3,.4,1)}
+@keyframes fadeIn{from{opacity:0}}
+@keyframes pop{from{transform:scale(.85);opacity:0}}
+.modal h3{margin:0 0 4px;font-size:22px;font-weight:800;text-wrap:balance}
+.modal .sub{margin:0 0 18px;font-size:13px;line-height:1.45;color:var(--muted);text-wrap:balance}
+.modal p.q{margin:0 0 18px;font-size:15px;line-height:1.45}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px}
+.stat{border:2px solid var(--line);border-radius:14px;padding:10px 6px}
+.stat b{display:block;font-size:26px;font-weight:900;color:var(--yellow);font-variant-numeric:tabular-nums}
+.stat span{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
+/* result popup – larger, score is the hero */
+#result .stack{position:relative;width:100%;max-width:420px;display:grid}
+#result .box{position:relative;z-index:0;max-width:420px;border-radius:32px;padding:36px 28px 28px}
+#result .stack.has-trophy .box{padding-top:76px}
+.trophy{position:absolute;z-index:2;left:50%;top:0;width:132px;margin-left:-66px;margin-top:-82px;pointer-events:none;
+  animation:trophyIn .7s .1s cubic-bezier(.2,1.5,.4,1) both}
+.trophy svg{display:block;width:100%;height:auto;animation:bob 3.2s .8s ease-in-out infinite;filter:drop-shadow(0 10px 14px rgba(0,0,0,.35))}
+@keyframes trophyIn{from{transform:translateY(40px) scale(.4) rotate(-12deg);opacity:0}}
+#result #confetti{position:fixed;z-index:1}
+#result h3{font-size:28px;margin-bottom:6px}
+#result .sub{font-size:15px;margin-bottom:24px}
+#result .badge{font-size:13px;padding:6px 14px;margin-bottom:14px}
+#result .score-big{color:var(--yellow);font-weight:900;font-size:clamp(40px,12vw,54px);line-height:1;letter-spacing:.01em;font-variant-numeric:tabular-nums}
+#result .score-big b{font-weight:900}
+#result .sub:empty{display:none}
+#result .badge{animation:pop .5s .15s cubic-bezier(.2,1.6,.4,1) both}
+#confetti{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:30}
+.timer{cursor:default;padding:4px 8px;border-radius:6px}
+#result .time-big{margin:12px 0 28px;color:var(--text);font-weight:900;font-size:18px;line-height:1;font-variant-numeric:tabular-nums}
+#result .time-big b{font-size:clamp(30px,9vw,38px)}
+#result .row{flex-direction:column;gap:12px}
+#result .row .btn{flex:none;height:54px;font-size:17px;width:100%}
+.badge{display:inline-block;margin-bottom:10px;padding:4px 10px;border-radius:20px;background:var(--pink);font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase}
+.modal .row{display:flex;gap:10px;justify-content:center}
+.modal .row .btn{flex:1;min-width:0}
+
+/* ---------- SCORES ---------- */
+.scroll{flex:1;min-height:0;overflow-y:auto;padding:20px var(--gutter) calc(28px + env(safe-area-inset-bottom,0px))}
+.scores-grid{max-width:640px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+.col{display:flex;flex-direction:column;gap:14px;min-width:0}
+.best-card{border:2px solid var(--line);border-radius:24px;overflow:hidden;transition:border-color .2s}
+.best-card.open{border-color:#56687A}
+.best-head{width:100%;display:grid;grid-template-columns:auto 1fr auto;gap:16px;align-items:center;padding:16px 18px;text-align:left}
+.best-head .info{display:flex;flex-direction:column;gap:3px;min-width:0}
+.best-head .name{font-size:15px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+.chev{width:28px;height:28px;color:var(--muted);transition:transform .25s ease}
+.best-card.open .chev{transform:rotate(180deg)}
+.best-body{display:grid;grid-template-rows:0fr;transition:grid-template-rows .3s ease}
+.best-card.open .best-body{grid-template-rows:1fr}
+.best-inner{overflow:hidden;min-height:0;padding:0 18px}
+.best-card.open .best-inner{padding-bottom:10px}
+.best-inner .sec-title{padding-top:14px;border-top:1px solid #22303F}
+.best-inner .hist li:last-child{border-bottom:0}
+.best-inner .empty{padding:10px 0 6px;font-size:13px}
+.best-card .mini{flex:none;width:64px;height:64px;border-radius:50%;border:3px solid var(--yellow);display:grid;place-items:center;
+  font-weight:900;font-size:26px;color:var(--yellow);font-variant-numeric:tabular-nums}
+.best-card.locked{opacity:.45}
+.best-card.locked .mini{border-color:var(--line);color:var(--dim)}
+.best-card h4{margin:0;font-size:15px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+.best-card .meta{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.best-card .meta b{color:var(--text);font-weight:700}
+.best-card .when{font-size:11px;color:var(--dim)}
+.sec-title{margin:0;font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
+.hist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.hist li{display:grid;grid-template-columns:2.2em 1fr auto;gap:12px;align-items:baseline;padding:11px 2px;border-bottom:1px solid #22303F;font-size:14px;font-variant-numeric:tabular-nums}
+.hist li b{font-weight:900;color:var(--yellow);font-size:16px}
+.hist li span{color:var(--muted);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hist li time{font-size:12px;color:var(--dim)}
+.empty{margin:0;font-size:14px;color:var(--dim);line-height:1.5}
+.danger{align-self:center;font-size:13px;color:var(--dim);text-decoration:underline;text-underline-offset:3px;padding:8px}
+
+/* ========== BREAKPOINTS ========== */
+/* phones: cards + dots form one block, centred between logo and Best Score */
+@media (max-width:599px) and (orientation:portrait){
+  .carousel{flex:none;margin-top:auto}
+  .card{height:clamp(346px,calc(100dvh - 284px),466px)}
+  .menu-foot{margin-top:auto}
+}
+/* phones: more compact result popup */
+@media (max-width:599px){
+  #result .stack{max-width:330px}
+  #result .box{max-width:330px;border-radius:26px;padding:24px 20px 20px}
+  #result .stack.has-trophy .box{padding-top:60px}
+  .trophy{width:104px;margin-left:-52px;margin-top:-64px}
+  #result .badge{font-size:11px;padding:5px 12px;margin-bottom:10px}
+  #result h3{font-size:22px}
+  #result .sub{font-size:13px;margin-bottom:14px}
+  #result .score-big{font-size:40px}
+  #result .time-big{margin:8px 0 20px}
+  #result .time-big b{font-size:26px}
+  #result .row{gap:10px}
+  #result .row .btn{height:46px;font-size:15px}
+}
+/* very narrow phones: icon-only bar buttons */
+@media (max-width:359px){ .bar-btn .lbl{display:none} }
+
+/* tablet */
+@media (min-width:600px){
+  :root{--gutter:32px}
+  .card{width:300px;height:min(460px,100%);padding:26px 26px 28px;gap:14px}
+  .card .art svg{max-width:240px;max-height:240px}
+  .carousel{padding-inline:calc(50% - 150px)}
+  .card p{font-size:13px}
+  .counter{width:104px;height:104px;font-size:48px}
+  .appbar{height:64px;padding:0 14px}
+  .bar-btn{font-size:12px}
+}
+
+/* desktop: all difficulty cards in one row, game with side panel */
+@media (min-width:900px){
+  .carousel{overflow:visible;justify-content:center;padding:28px var(--gutter);scroll-snap-type:none}
+  .card{width:auto;flex:1 1 0;max-width:230px;opacity:1;transform:none;transition:transform .2s, border-color .2s}
+  .card:hover{transform:translateY(-4px);border-color:#5A6B7D}
+  .card:not(:has([data-start])) {opacity:.55}
+  .dots{display:none}
+  #menu{justify-content:center;gap:8px}
+  .menu-head{padding-top:0;padding-bottom:28px}
+  .menu-head .wordmark{width:300px}
+  .carousel{flex:none;height:min(420px,52vh);padding:24px var(--gutter)}
+  .card{height:100%}
+  .menu-foot{padding:8px var(--gutter) 0}
+}
+@media (orientation:landscape) and (max-height:560px){
+  .game-body{grid-template-columns:minmax(0,1fr) minmax(220px,300px);grid-template-rows:1fr 1fr;
+    grid-template-areas:"stage hud" "stage foot"}
+  .hud{align-self:end;padding:0 var(--gutter) 10px}
+  .game-foot{align-self:start;padding:10px var(--gutter) 0}
+  .stage{padding:16px 0 16px var(--gutter)}
+}
+@media (orientation:landscape) and (max-height:560px){
+  .appbar{height:48px}
+  .counter{width:76px;height:76px;font-size:34px}
+  .menu-head .wordmark{width:180px}
+  #intro .lockup{--w:200px}
+  .menu-head{padding-top:8px}
+  .card{height:100%;padding:12px 16px 14px;gap:6px}
+  .card p{display:none}
+  .dots{padding-bottom:8px}
+  .menu-foot{padding-bottom:12px}
+  #intro{flex-direction:row;gap:48px}
+}
+
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+}
+</style>
+</head>
+<body>
+
+<div id="app">
+  <!-- ========== INTRO (nickname) ========== -->
+  <section class="screen left" id="intro" aria-hidden="false">
+    <div class="lockup" role="img" aria-label="Happy Loner"><img class="ball" src="data:image/svg+xml;base64,PHN2ZyBpZD0iVnJzdHZhXzEiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIHZlcnNpb249IjEuMSIgdmlld0JveD0iNzQyIDQzNiAzNjYgMjU0Ij4KICAKICA8ZGVmcz4KICAgIDxzdHlsZT4KICAgICAgLnN0MCwgLnN0MSwgLnN0MiwgLnN0MywgLnN0NCwgLnN0NSB7CiAgICAgICAgZmlsbDogbm9uZTsKICAgICAgfQoKICAgICAgLnN0NiB7CiAgICAgICAgZmlsbDogI2ZmZGY0MzsKICAgICAgfQoKICAgICAgLnN0MSB7CiAgICAgICAgZGlzcGxheTogbm9uZTsKICAgICAgICBzdHJva2U6ICMzZDI0MDU7CiAgICAgICAgc3Ryb2tlLXdpZHRoOiAyM3B4OwogICAgICB9CgogICAgICAuc3QxLCAuc3QyLCAuc3QzLCAuc3Q0LCAuc3Q1IHsKICAgICAgICBzdHJva2UtbWl0ZXJsaW1pdDogMTA7CiAgICAgIH0KCiAgICAgIC5zdDcgewogICAgICAgIGZpbGw6ICNkMzhkMTM7CiAgICAgIH0KCiAgICAgIC5zdDggewogICAgICAgIGZpbGw6IHVybCgjTmVwb2ptZW5vdmFuw71fcMWZZWNob2RfNTk3KTsKICAgICAgfQoKICAgICAgLnN0OSB7CiAgICAgICAgZmlsbDogdXJsKCNOZXBvam1lbm92YW7DvV9wxZllY2hvZF81OTgpOwogICAgICB9CgogICAgICAuc3QxMCB7CiAgICAgICAgZmlsbDogdXJsKCNOZXBvam1lbm92YW7DvV9wxZllY2hvZF81OTMpOwogICAgICB9CgogICAgICAuc3QxMSB7CiAgICAgICAgZmlsbDogdXJsKCNOZXBvam1lbm92YW7DvV9wxZllY2hvZF81OTQpOwogICAgICB9CgogICAgICAuc3QxMiB7CiAgICAgICAgZmlsbDogdXJsKCNOZXBvam1lbm92YW7DvV9wxZllY2hvZF81OTUpOwogICAgICB9CgogICAgICAuc3QxMyB7CiAgICAgICAgZmlsbDogdXJsKCNOZXBvam1lbm92YW7DvV9wxZllY2hvZF81OTYpOwogICAgICB9CgogICAgICAuc3QxNCB7CiAgICAgICAgZmlsbDogdXJsKCNOZXBvam1lbm92YW7DvV9wxZllY2hvZF81OTkpOwogICAgICB9CgogICAgICAuc3QxNSB7CiAgICAgICAgZmlsbDogdXJsKCNOZXBvam1lbm92YW7DvV9wxZllY2hvZF81OTEpOwogICAgICB9CgogICAgICAuc3QxNiB7CiAgICAgICAgZmlsbDogdXJsKCNOZXBvam1lbm92YW7DvV9wxZllY2hvZF81OTIpOwogICAgICB9CgogICAgICAuc3QxNyB7CiAgICAgICAgZmlsbDogI2ZmYzMzNjsKICAgICAgfQoKICAgICAgLnN0MiB7CiAgICAgICAgc3Ryb2tlOiAjY2VlNmZmOwogICAgICAgIHN0cm9rZS13aWR0aDogMjIuNXB4OwogICAgICB9CgogICAgICAuc3QxOCB7CiAgICAgICAgZmlsbDogdXJsKCNOZXBvam1lbm92YW7DvV9wxZllY2hvZF81OSk7CiAgICAgIH0KCiAgICAgIC5zdDMgewogICAgICAgIHN0cm9rZS13aWR0aDogMjdweDsKICAgICAgfQoKICAgICAgLnN0MywgLnN0NCB7CiAgICAgICAgc3Ryb2tlOiAjNDQxZDAwOwogICAgICAgIHN0cm9rZS1saW5lY2FwOiByb3VuZDsKICAgICAgfQoKICAgICAgLnN0MTkgewogICAgICAgIGNsaXAtcGF0aDogdXJsKCNjbGlwcGF0aC0xKTsKICAgICAgfQoKICAgICAgLnN0MjAgewogICAgICAgIGNsaXAtcGF0aDogdXJsKCNjbGlwcGF0aC0yKTsKICAgICAgfQoKICAgICAgLnN0MjEgewogICAgICAgIGZpbGw6ICM3NzQ3MDE7CiAgICAgIH0KCiAgICAgIC5zdDIyIHsKICAgICAgICBvcGFjaXR5OiAuMTsKICAgICAgfQoKICAgICAgLnN0NCB7CiAgICAgICAgb3BhY2l0eTogLjU7CiAgICAgICAgc3Ryb2tlLXdpZHRoOiA2cHg7CiAgICAgIH0KCiAgICAgIC5zdDIzIHsKICAgICAgICBmaWxsOiAjZmZiYzAwOwogICAgICB9CgogICAgICAuc3Q1IHsKICAgICAgICBzdHJva2U6ICM5NGE2YWY7CiAgICAgICAgc3Ryb2tlLXdpZHRoOiAyNnB4OwogICAgICB9CgogICAgICAuc3QyNCB7CiAgICAgICAgY2xpcC1wYXRoOiB1cmwoI2NsaXBwYXRoKTsKICAgICAgfQogICAgPC9zdHlsZT4KICAgIDxjbGlwUGF0aCBpZD0iY2xpcHBhdGgiPgogICAgICA8Y2lyY2xlIGNsYXNzPSJzdDAiIGN4PSI5MjEuOSIgY3k9IjU2MyIgcj0iMTA4Ii8+CiAgICA8L2NsaXBQYXRoPgogICAgPGxpbmVhckdyYWRpZW50IGlkPSJOZXBvam1lbm92YW7DvV9wxZllY2hvZF81OSIgZGF0YS1uYW1lPSJOZXBvam1lbm92YW7DvSBwxZllY2hvZCA1OSIgeDE9IjgxOS40IiB5MT0iNzcxLjEiIHgyPSI4MTkuNCIgeTI9IjcxNy42IiBncmFkaWVudFVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+CiAgICAgIDxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iI2ZmYjAwMCIvPgogICAgICA8c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiNmZmQ4MzMiLz4KICAgIDwvbGluZWFyR3JhZGllbnQ+CiAgICA8bGluZWFyR3JhZGllbnQgaWQ9Ik5lcG9qbWVub3ZhbsO9X3DFmWVjaG9kXzU5MSIgZGF0YS1uYW1lPSJOZXBvam1lbm92YW7DvSBwxZllY2hvZCA1OSIgeDE9Ijg3My41IiB4Mj0iODczLjUiIHhsaW5rOmhyZWY9IiNOZXBvam1lbm92YW7DvV9wxZllY2hvZF81OSIvPgogICAgPGxpbmVhckdyYWRpZW50IGlkPSJOZXBvam1lbm92YW7DvV9wxZllY2hvZF81OTIiIGRhdGEtbmFtZT0iTmVwb2ptZW5vdmFuw70gcMWZZWNob2QgNTkiIHgxPSI5MjYuNCIgeDI9IjkyNi40IiB4bGluazpocmVmPSIjTmVwb2ptZW5vdmFuw71fcMWZZWNob2RfNTkiLz4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0iTmVwb2ptZW5vdmFuw71fcMWZZWNob2RfNTkzIiBkYXRhLW5hbWU9Ik5lcG9qbWVub3ZhbsO9IHDFmWVjaG9kIDU5IiB4MT0iOTc2LjYiIHgyPSI5NzYuNiIgeGxpbms6aHJlZj0iI05lcG9qbWVub3ZhbsO9X3DFmWVjaG9kXzU5Ii8+CiAgICA8bGluZWFyR3JhZGllbnQgaWQ9Ik5lcG9qbWVub3ZhbsO9X3DFmWVjaG9kXzU5NCIgZGF0YS1uYW1lPSJOZXBvam1lbm92YW7DvSBwxZllY2hvZCA1OSIgeDE9IjEwMjIuNiIgeDI9IjEwMjIuNiIgeGxpbms6aHJlZj0iI05lcG9qbWVub3ZhbsO9X3DFmWVjaG9kXzU5Ii8+CiAgICA8bGluZWFyR3JhZGllbnQgaWQ9Ik5lcG9qbWVub3ZhbsO9X3DFmWVjaG9kXzU5NSIgZGF0YS1uYW1lPSJOZXBvam1lbm92YW7DvSBwxZllY2hvZCA1OSIgeDE9IjgxNC45IiB5MT0iODQxLjEiIHgyPSI4MTQuOSIgeTI9Ijc4Ny42IiB4bGluazpocmVmPSIjTmVwb2ptZW5vdmFuw71fcMWZZWNob2RfNTkiLz4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0iTmVwb2ptZW5vdmFuw71fcMWZZWNob2RfNTk2IiBkYXRhLW5hbWU9Ik5lcG9qbWVub3ZhbsO9IHDFmWVjaG9kIDU5IiB4MT0iODYxLjUiIHkxPSI4NDEuNiIgeDI9Ijg2MS41IiB5Mj0iNzg3LjEiIHhsaW5rOmhyZWY9IiNOZXBvam1lbm92YW7DvV9wxZllY2hvZF81OSIvPgogICAgPGxpbmVhckdyYWRpZW50IGlkPSJOZXBvam1lbm92YW7DvV9wxZllY2hvZF81OTciIGRhdGEtbmFtZT0iTmVwb2ptZW5vdmFuw70gcMWZZWNob2QgNTkiIHgxPSI5MTkuMSIgeTE9Ijg0MS4xIiB4Mj0iOTE5LjEiIHkyPSI3ODcuNiIgeGxpbms6aHJlZj0iI05lcG9qbWVub3ZhbsO9X3DFmWVjaG9kXzU5Ii8+CiAgICA8bGluZWFyR3JhZGllbnQgaWQ9Ik5lcG9qbWVub3ZhbsO9X3DFmWVjaG9kXzU5OCIgZGF0YS1uYW1lPSJOZXBvam1lbm92YW7DvSBwxZllY2hvZCA1OSIgeDE9Ijk3Mi43IiB5MT0iODQxLjEiIHgyPSI5NzIuNyIgeTI9Ijc4Ny42IiB4bGluazpocmVmPSIjTmVwb2ptZW5vdmFuw71fcMWZZWNob2RfNTkiLz4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0iTmVwb2ptZW5vdmFuw71fcMWZZWNob2RfNTk5IiBkYXRhLW5hbWU9Ik5lcG9qbWVub3ZhbsO9IHDFmWVjaG9kIDU5IiB4MT0iMTAyMi40IiB5MT0iODQxLjEiIHgyPSIxMDIyLjQiIHkyPSI3ODcuNiIgeGxpbms6aHJlZj0iI05lcG9qbWVub3ZhbsO9X3DFmWVjaG9kXzU5Ii8+CiAgICA8Y2xpcFBhdGggaWQ9ImNsaXBwYXRoLTEiPgogICAgICA8ZWxsaXBzZSBjbGFzcz0ic3QwIiBjeD0iODgzLjciIGN5PSI1NDQuMiIgcng9IjIyLjgiIHJ5PSIxOC42IiB0cmFuc2Zvcm09InRyYW5zbGF0ZSgtNTEuMyA5My43KSByb3RhdGUoLTUuOSkiLz4KICAgIDwvY2xpcFBhdGg+CiAgICA8Y2xpcFBhdGggaWQ9ImNsaXBwYXRoLTIiPgogICAgICA8cGF0aCBjbGFzcz0ic3QwIiBkPSJNOTQ2LDU0My43Yy0xLjgsOC4xLDQuMSwxNi41LDEzLjEsMTguNyw5LDIuMiwxNy44LTIuNiwxOS41LTEwLjgsMS44LTguMS00LjEtMTYuNS0xMy4xLTE4LjdzLTE3LjgsMi42LTE5LjUsMTAuOFoiLz4KICAgIDwvY2xpcFBhdGg+CiAgPC9kZWZzPgogIDxjaXJjbGUgY2xhc3M9InN0MTciIGN4PSI5MjEuOSIgY3k9IjU2MyIgcj0iMTA4Ii8+CiAgPHBhdGggY2xhc3M9InN0NSIgZD0iTTc4Miw1NTEuMmw5OS43LTQwLjZjMjIuMS05LDU3LjktOSw4MCwwbDk5LjcsNDAuNiIvPgogIDxwYXRoIGNsYXNzPSJzdDIiIGQ9Ik03ODIsNTQ2LjJsOTkuNy00MC42YzIyLjEtOSw1Ny45LTksODAsMGw5OS43LDQwLjYiLz4KICA8Y2lyY2xlIGNsYXNzPSJzdDIzIiBjeD0iOTIyLjMiIGN5PSI1NjMuOSIgcj0iMTA4Ii8+CiAgPGcgY2xhc3M9InN0MjIiPgogICAgPGcgY2xhc3M9InN0MjQiPgogICAgICA8cGF0aCBjbGFzcz0ic3QxIiBkPSJNMTA1NS4xLDU1OS4xYzIxLDUuNywyMSwxNSwwLDIwLjZsLTYzLjksMTcuM2MtMzguMywxMC4zLTEwMC45LDEwLjMtMTM5LjEsMGwtNjMuOS0xNy4zYy0yMS01LjctMjEtMTUsMC0yMC42Ii8+CiAgICAgIDxwYXRoIGNsYXNzPSJzdDMiIGQ9Ik0xMDU3LjQsNTQ0LjhjMCwzNi41LTYwLjcsNjYtMTM1LjUsNjZzLTEzNS41LTI5LjUtMTM1LjUtNjYiLz4KICAgIDwvZz4KICA8L2c+CiAgPHBhdGggY2xhc3M9InN0NSIgZD0iTTEwNjEuMyw1NTEuMmMyMi4xLDksMjIuMSwyMy42LDAsMzIuNmwtOTkuNyw0MC42Yy0yMi4xLDktNTcuOSw5LTgwLDBsLTk5LjctNDAuNmMtMjIuMS05LTIyLjEtMjMuNiwwLTMyLjYiLz4KICA8cGF0aCBjbGFzcz0ic3QyIiBkPSJNMTA2MS4zLDU0Ni4yYzIyLjEsOSwyMi4xLDIzLjYsMCwzMi42bC05OS43LDQwLjZjLTIyLjEsOS01Ny45LDktODAsMGwtOTkuNy00MC42Yy0yMi4xLTktMjIuMS0yMy42LDAtMzIuNiIvPgogIAogIDxwYXRoIGNsYXNzPSJzdDQiIGQ9Ik05NzguMiw1MzkuN2MtNS45LTguNy0xNy43LTExLTI2LjQtNS4xIi8+CiAgPGVsbGlwc2UgY2xhc3M9InN0NiIgY3g9Ijg5Mi41IiBjeT0iNDc4LjIiIHJ4PSIyMCIgcnk9IjExLjgiIHRyYW5zZm9ybT0idHJhbnNsYXRlKC0xMTAuMyAzMzguMSkgcm90YXRlKC0yMC4yKSIvPgogIDxlbGxpcHNlIGNsYXNzPSJzdDYiIGN4PSI4NjIuNyIgY3k9IjQ5MS4yIiByeD0iNiIgcnk9IjQuMiIgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoLTEyMi40IDYxNC4xKSByb3RhdGUoLTM2LjgpIi8+CiAgPGVsbGlwc2UgY2xhc3M9InN0MjMiIGN4PSI4ODAuOSIgY3k9IjUzNC4zIiByeD0iMzQiIHJ5PSIyOS41Ii8+CiAgPGVsbGlwc2UgY2xhc3M9InN0NyIgY3g9Ijg4MSIgY3k9IjUzNy42IiByeD0iMjIuOCIgcnk9IjE4LjciIHRyYW5zZm9ybT0idHJhbnNsYXRlKC01MC42IDkzLjQpIHJvdGF0ZSgtNS45KSIvPgogIDxnIGNsYXNzPSJzdDE5Ij4KICAgIDxlbGxpcHNlIGNsYXNzPSJzdDIxIiBjeD0iODgwLjgiIGN5PSI1MzUuOSIgcng9IjIyLjgiIHJ5PSIyMC44IiB0cmFuc2Zvcm09InRyYW5zbGF0ZSgtNTAuNCA5My40KSByb3RhdGUoLTUuOSkiLz4KICA8L2c+CiAgPHBhdGggY2xhc3M9InN0NiIgZD0iTTg1Myw1NDEuOGMtMS44LTkuNSwzLjgtMTkuMiwxMS44LTI0LjIsOC4xLTUuMiwxOC42LTYuNSwyNy42LTMuMyw1LjksMi4xLDExLjMsNi4zLDE0LjEsMTEuOS0zLjYtNC45LTguOS04LjMtMTQuNy0xMC0xNy4xLTUuMi0zOSw2LjItMzguOCwyNS41aDBaIi8+CiAgPHBhdGggY2xhc3M9InN0NiIgZD0iTTkwNC4xLDU1Mi40Yy05LjIsMTMuMi0zMSwxNS41LTQyLjcsNC40LDEzLjksNi4zLDMwLjQsNC42LDQyLjctNC40aDBaIi8+CiAgPGc+CiAgICA8ZWxsaXBzZSBjbGFzcz0ic3QyMyIgY3g9Ijk2NC45IiBjeT0iNTM5LjgiIHJ4PSIyNCIgcnk9IjI1IiB0cmFuc2Zvcm09InRyYW5zbGF0ZSgyNjYuNzMzNSAxMzk3LjA0ODUpIHJvdGF0ZSgtODAuMDYzNikiLz4KICAgIDxwYXRoIGNsYXNzPSJzdDciIGQ9Ik05NDguMiw1MzguNGMtMS44LDguMiw0LjEsMTYuNiwxMy4xLDE4LjgsOSwyLjIsMTcuOC0yLjcsMTkuNi0xMC45LDEuOC04LjItNC4xLTE2LjYtMTMuMS0xOC44LTktMi4yLTE3LjgsMi43LTE5LjYsMTAuOVoiLz4KICAgIDxnIGNsYXNzPSJzdDIwIj4KICAgICAgPHBhdGggY2xhc3M9InN0MjEiIGQ9Ik05NDguNSw1MzcuMWMtMiw5LjEsMy43LDE4LjMsMTIuNywyMC41LDksMi4yLDE3LjktMy40LDE5LjktMTIuNiwyLTkuMS0zLjctMTguMy0xMi43LTIwLjUtOS0yLjItMTcuOSwzLjQtMTkuOSwxMi42WiIvPgogICAgPC9nPgogICAgPHBhdGggY2xhc3M9InN0NiIgZD0iTTk0NS45LDUzNGM0LjctMTQuMiwyNC42LTE2LjEsMzMtNC4yLTIuNS0yLjEtNS4zLTMuOC04LjMtNC44LTkuMi0zLjMtMTkuNy41LTI0LjcsOWgwWiIvPgogICAgPHBhdGggY2xhc3M9InN0NiIgZD0iTTk4My41LDU0MmMyLjcsNS42LjYsMTIuOS00LjUsMTYuNS01LDMuNy0xMS44LDQuMi0xNy40LDIuMSwzLC4zLDUuOS4zLDguNy0uMyw5LTEuNiwxNS4xLTkuMSwxMy4zLTE4LjNoMFoiLz4KICA8L2c+Cjwvc3ZnPg==" alt=""><img class="word" src="data:image/svg+xml;base64,PHN2ZyBpZD0iVnJzdHZhXzEiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIHZlcnNpb249IjEuMSIgdmlld0JveD0iNzkwIDcxMiAyNzAgMTM0Ij4KICAKICA8ZGVmcz4KICAgIDxzdHlsZT4KICAgICAgLnN0MCwgLnN0MSwgLnN0MiwgLnN0MywgLnN0NCwgLnN0NSB7CiAgICAgICAgZmlsbDogbm9uZTsKICAgICAgfQoKICAgICAgLnN0NiB7CiAgICAgICAgZmlsbDogI2ZmZGY0MzsKICAgICAgfQoKICAgICAgLnN0MSB7CiAgICAgICAgZGlzcGxheTogbm9uZTsKICAgICAgICBzdHJva2U6ICMzZDI0MDU7CiAgICAgICAgc3Ryb2tlLXdpZHRoOiAyM3B4OwogICAgICB9CgogICAgICAuc3QxLCAuc3QyLCAuc3QzLCAuc3Q0LCAuc3Q1IHsKICAgICAgICBzdHJva2UtbWl0ZXJsaW1pdDogMTA7CiAgICAgIH0KCiAgICAgIC5zdDcgewogICAgICAgIGZpbGw6ICNkMzhkMTM7CiAgICAgIH0KCiAgICAgIC5zdDggewogICAgICAgIGZpbGw6IHVybCgjTmVwb2ptZW5vdmFuw71fcMWZZWNob2RfNTk3KTsKICAgICAgfQoKICAgICAgLnN0OSB7CiAgICAgICAgZmlsbDogdXJsKCNOZXBvam1lbm92YW7DvV9wxZllY2hvZF81OTgpOwogICAgICB9CgogICAgICAuc3QxMCB7CiAgICAgICAgZmlsbDogdXJsKCNOZXBvam1lbm92YW7DvV9wxZllY2hvZF81OTMpOwogICAgICB9CgogICAgICAuc3QxMSB7CiAgICAgICAgZmlsbDogdXJsKCNOZXBvam1lbm92YW7DvV9wxZllY2hvZF81OTQpOwogICAgICB9CgogICAgICAuc3QxMiB7CiAgICAgICAgZmlsbDogdXJsKCNOZXBvam1lbm92YW7DvV9wxZllY2hvZF81OTUpOwogICAgICB9CgogICAgICAuc3QxMyB7CiAgICAgICAgZmlsbDogdXJsKCNOZXBvam1lbm92YW7DvV9wxZllY2hvZF81OTYpOwogICAgICB9CgogICAgICAuc3QxNCB7CiAgICAgICAgZmlsbDogdXJsKCNOZXBvam1lbm92YW7DvV9wxZllY2hvZF81OTkpOwogICAgICB9CgogICAgICAuc3QxNSB7CiAgICAgICAgZmlsbDogdXJsKCNOZXBvam1lbm92YW7DvV9wxZllY2hvZF81OTEpOwogICAgICB9CgogICAgICAuc3QxNiB7CiAgICAgICAgZmlsbDogdXJsKCNOZXBvam1lbm92YW7DvV9wxZllY2hvZF81OTIpOwogICAgICB9CgogICAgICAuc3QxNyB7CiAgICAgICAgZmlsbDogI2ZmYzMzNjsKICAgICAgfQoKICAgICAgLnN0MiB7CiAgICAgICAgc3Ryb2tlOiAjY2VlNmZmOwogICAgICAgIHN0cm9rZS13aWR0aDogMjIuNXB4OwogICAgICB9CgogICAgICAuc3QxOCB7CiAgICAgICAgZmlsbDogdXJsKCNOZXBvam1lbm92YW7DvV9wxZllY2hvZF81OSk7CiAgICAgIH0KCiAgICAgIC5zdDMgewogICAgICAgIHN0cm9rZS13aWR0aDogMjdweDsKICAgICAgfQoKICAgICAgLnN0MywgLnN0NCB7CiAgICAgICAgc3Ryb2tlOiAjNDQxZDAwOwogICAgICAgIHN0cm9rZS1saW5lY2FwOiByb3VuZDsKICAgICAgfQoKICAgICAgLnN0MTkgewogICAgICAgIGNsaXAtcGF0aDogdXJsKCNjbGlwcGF0aC0xKTsKICAgICAgfQoKICAgICAgLnN0MjAgewogICAgICAgIGNsaXAtcGF0aDogdXJsKCNjbGlwcGF0aC0yKTsKICAgICAgfQoKICAgICAgLnN0MjEgewogICAgICAgIGZpbGw6ICM3NzQ3MDE7CiAgICAgIH0KCiAgICAgIC5zdDIyIHsKICAgICAgICBvcGFjaXR5OiAuMTsKICAgICAgfQoKICAgICAgLnN0NCB7CiAgICAgICAgb3BhY2l0eTogLjU7CiAgICAgICAgc3Ryb2tlLXdpZHRoOiA2cHg7CiAgICAgIH0KCiAgICAgIC5zdDIzIHsKICAgICAgICBmaWxsOiAjZmZiYzAwOwogICAgICB9CgogICAgICAuc3Q1IHsKICAgICAgICBzdHJva2U6ICM5NGE2YWY7CiAgICAgICAgc3Ryb2tlLXdpZHRoOiAyNnB4OwogICAgICB9CgogICAgICAuc3QyNCB7CiAgICAgICAgY2xpcC1wYXRoOiB1cmwoI2NsaXBwYXRoKTsKICAgICAgfQogICAgPC9zdHlsZT4KICAgIDxjbGlwUGF0aCBpZD0iY2xpcHBhdGgiPgogICAgICA8Y2lyY2xlIGNsYXNzPSJzdDAiIGN4PSI5MjEuOSIgY3k9IjU2MyIgcj0iMTA4Ii8+CiAgICA8L2NsaXBQYXRoPgogICAgPGxpbmVhckdyYWRpZW50IGlkPSJOZXBvam1lbm92YW7DvV9wxZllY2hvZF81OSIgZGF0YS1uYW1lPSJOZXBvam1lbm92YW7DvSBwxZllY2hvZCA1OSIgeDE9IjgxOS40IiB5MT0iNzcxLjEiIHgyPSI4MTkuNCIgeTI9IjcxNy42IiBncmFkaWVudFVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+CiAgICAgIDxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iI2ZmYjAwMCIvPgogICAgICA8c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiNmZmQ4MzMiLz4KICAgIDwvbGluZWFyR3JhZGllbnQ+CiAgICA8bGluZWFyR3JhZGllbnQgaWQ9Ik5lcG9qbWVub3ZhbsO9X3DFmWVjaG9kXzU5MSIgZGF0YS1uYW1lPSJOZXBvam1lbm92YW7DvSBwxZllY2hvZCA1OSIgeDE9Ijg3My41IiB4Mj0iODczLjUiIHhsaW5rOmhyZWY9IiNOZXBvam1lbm92YW7DvV9wxZllY2hvZF81OSIvPgogICAgPGxpbmVhckdyYWRpZW50IGlkPSJOZXBvam1lbm92YW7DvV9wxZllY2hvZF81OTIiIGRhdGEtbmFtZT0iTmVwb2ptZW5vdmFuw70gcMWZZWNob2QgNTkiIHgxPSI5MjYuNCIgeDI9IjkyNi40IiB4bGluazpocmVmPSIjTmVwb2ptZW5vdmFuw71fcMWZZWNob2RfNTkiLz4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0iTmVwb2ptZW5vdmFuw71fcMWZZWNob2RfNTkzIiBkYXRhLW5hbWU9Ik5lcG9qbWVub3ZhbsO9IHDFmWVjaG9kIDU5IiB4MT0iOTc2LjYiIHgyPSI5NzYuNiIgeGxpbms6aHJlZj0iI05lcG9qbWVub3ZhbsO9X3DFmWVjaG9kXzU5Ii8+CiAgICA8bGluZWFyR3JhZGllbnQgaWQ9Ik5lcG9qbWVub3ZhbsO9X3DFmWVjaG9kXzU5NCIgZGF0YS1uYW1lPSJOZXBvam1lbm92YW7DvSBwxZllY2hvZCA1OSIgeDE9IjEwMjIuNiIgeDI9IjEwMjIuNiIgeGxpbms6aHJlZj0iI05lcG9qbWVub3ZhbsO9X3DFmWVjaG9kXzU5Ii8+CiAgICA8bGluZWFyR3JhZGllbnQgaWQ9Ik5lcG9qbWVub3ZhbsO9X3DFmWVjaG9kXzU5NSIgZGF0YS1uYW1lPSJOZXBvam1lbm92YW7DvSBwxZllY2hvZCA1OSIgeDE9IjgxNC45IiB5MT0iODQxLjEiIHgyPSI4MTQuOSIgeTI9Ijc4Ny42IiB4bGluazpocmVmPSIjTmVwb2ptZW5vdmFuw71fcMWZZWNob2RfNTkiLz4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0iTmVwb2ptZW5vdmFuw71fcMWZZWNob2RfNTk2IiBkYXRhLW5hbWU9Ik5lcG9qbWVub3ZhbsO9IHDFmWVjaG9kIDU5IiB4MT0iODYxLjUiIHkxPSI4NDEuNiIgeDI9Ijg2MS41IiB5Mj0iNzg3LjEiIHhsaW5rOmhyZWY9IiNOZXBvam1lbm92YW7DvV9wxZllY2hvZF81OSIvPgogICAgPGxpbmVhckdyYWRpZW50IGlkPSJOZXBvam1lbm92YW7DvV9wxZllY2hvZF81OTciIGRhdGEtbmFtZT0iTmVwb2ptZW5vdmFuw70gcMWZZWNob2QgNTkiIHgxPSI5MTkuMSIgeTE9Ijg0MS4xIiB4Mj0iOTE5LjEiIHkyPSI3ODcuNiIgeGxpbms6aHJlZj0iI05lcG9qbWVub3ZhbsO9X3DFmWVjaG9kXzU5Ii8+CiAgICA8bGluZWFyR3JhZGllbnQgaWQ9Ik5lcG9qbWVub3ZhbsO9X3DFmWVjaG9kXzU5OCIgZGF0YS1uYW1lPSJOZXBvam1lbm92YW7DvSBwxZllY2hvZCA1OSIgeDE9Ijk3Mi43IiB5MT0iODQxLjEiIHgyPSI5NzIuNyIgeTI9Ijc4Ny42IiB4bGluazpocmVmPSIjTmVwb2ptZW5vdmFuw71fcMWZZWNob2RfNTkiLz4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0iTmVwb2ptZW5vdmFuw71fcMWZZWNob2RfNTk5IiBkYXRhLW5hbWU9Ik5lcG9qbWVub3ZhbsO9IHDFmWVjaG9kIDU5IiB4MT0iMTAyMi40IiB5MT0iODQxLjEiIHgyPSIxMDIyLjQiIHkyPSI3ODcuNiIgeGxpbms6aHJlZj0iI05lcG9qbWVub3ZhbsO9X3DFmWVjaG9kXzU5Ii8+CiAgICA8Y2xpcFBhdGggaWQ9ImNsaXBwYXRoLTEiPgogICAgICA8ZWxsaXBzZSBjbGFzcz0ic3QwIiBjeD0iODgzLjciIGN5PSI1NDQuMiIgcng9IjIyLjgiIHJ5PSIxOC42IiB0cmFuc2Zvcm09InRyYW5zbGF0ZSgtNTEuMyA5My43KSByb3RhdGUoLTUuOSkiLz4KICAgIDwvY2xpcFBhdGg+CiAgICA8Y2xpcFBhdGggaWQ9ImNsaXBwYXRoLTIiPgogICAgICA8cGF0aCBjbGFzcz0ic3QwIiBkPSJNOTQ2LDU0My43Yy0xLjgsOC4xLDQuMSwxNi41LDEzLjEsMTguNyw5LDIuMiwxNy44LTIuNiwxOS41LTEwLjgsMS44LTguMS00LjEtMTYuNS0xMy4xLTE4LjdzLTE3LjgsMi42LTE5LjUsMTAuOFoiLz4KICAgIDwvY2xpcFBhdGg+CiAgPC9kZWZzPjxnPgogICAgPHBhdGggY2xhc3M9InN0MTgiIGQ9Ik03OTkuOSw3NzEuMWg2LjVjMi4yLDAsNC0xLjgsNC00di0xNi4zaDE4LjF2MTYuM2MwLDIuMiwxLjgsNCw0LDRoNi41YzIuMiwwLDQtMS44LDQtNHYtNDUuNWMwLTIuMi0xLjgtNC00LTRoLTYuNWMtMi4yLDAtNCwxLjgtNCw0djE1LjZoLTE4LjF2LTE1LjZjMC0yLjItMS44LTQtNC00aC02LjVjLTIuMiwwLTQsMS44LTQsNHY0NS41YzAsMi4yLDEuOCw0LDQsNFoiLz4KICAgIDxwYXRoIGNsYXNzPSJzdDE1IiBkPSJNOTAwLjcsNzY5LjJjLjctMS4xLjgtMi42LjMtMy44bC0yMC43LTQ1LjVjLS42LTEuNC0yLjEtMi4zLTMuNi0yLjNoLTYuNGMtMS42LDAtMywuOS0zLjYsMi4zbC0yMC42LDQ1LjVjLS42LDEuMi0uNSwyLjcuMywzLjguNywxLjEsMiwxLjgsMy40LDEuOGg2LjdjMS42LDAsMy0uOSwzLjctMi40bDQtOWgxOWw0LDljLjYsMS41LDIuMSwyLjQsMy43LDIuNGg2LjhjMS40LDAsMi42LS43LDMuNC0xLjhaTTg2OS43LDc0Ni41bDMuNy04LjQsMy43LDguNGgtNy40WiIvPgogICAgPHBhdGggY2xhc3M9InN0MTYiIGQ9Ik05NDIuMiw3MjIuN3MwLDAsMCwwYy00LjEtMy40LTkuNi01LjItMTYuNS01LjJoLTE3LjdjLTIuMiwwLTQsMS44LTQsNHY0NS41YzAsMi4yLDEuOCw0LDQsNGg2LjVjMi4yLDAsNC0xLjgsNC00di05LjhoNy4yYzYuOCwwLDEyLjQtMS43LDE2LjUtNS4yLDQuMy0zLjYsNi41LTguNSw2LjUtMTQuN3MtMi4yLTExLjEtNi41LTE0LjdaTTkxOC41LDczMS4yaDdjMy4yLDAsNS41LjYsNi45LDEuNy44LjYsMS44LDEuNywxLjgsNC41cy0xLDMuOC0xLjgsNC41Yy0xLjQsMS4yLTMuOCwxLjctNi45LDEuN2gtN3YtMTIuNFoiLz4KICAgIDxwYXRoIGNsYXNzPSJzdDEwIiBkPSJNOTkyLjQsNzIyLjdzMCwwLDAsMGMtNC4xLTMuNC05LjYtNS4yLTE2LjUtNS4yaC0xNy43Yy0yLjIsMC00LDEuOC00LDR2NDUuNWMwLDIuMiwxLjgsNCw0LDRoNi41YzIuMiwwLDQtMS44LDQtNHYtOS44aDcuMmM2LjgsMCwxMi40LTEuNywxNi41LTUuMiw0LjMtMy42LDYuNS04LjUsNi41LTE0LjdzLTIuMi0xMS4xLTYuNS0xNC43Wk05NjguNyw3MzEuMmg3YzMuMiwwLDUuNS42LDYuOSwxLjcuOC42LDEuOCwxLjcsMS44LDQuNXMtMSwzLjgtMS44LDQuNWMtMS40LDEuMi0zLjgsMS43LTYuOSwxLjdoLTd2LTEyLjRaIi8+CiAgICA8cGF0aCBjbGFzcz0ic3QxMSIgZD0iTTEwNDcuMyw3MTkuNmMtLjctMS4zLTItMi0zLjUtMmgtNi40Yy0xLjQsMC0yLjcuNy0zLjQsMS45bC0xMS4yLDE4LjQtMTEuMS0xOC40Yy0uNy0xLjItMi0xLjktMy40LTEuOWgtN2MtMS40LDAtMi44LjgtMy41LDItLjcsMS4zLS43LDIuOCwwLDRsMTcuNSwyOC43djE0LjdjMCwyLjIsMS44LDQsNCw0aDYuNGMyLjIsMCw0LTEuOCw0LTR2LTE0LjZsMTcuNS0yOC44Yy43LTEuMi44LTIuOCwwLTRaIi8+CiAgICA8cGF0aCBjbGFzcz0ic3QxMiIgZD0iTTgzMC41LDgyNy40aC0yMC42di0zNS44YzAtMi4yLTEuOC00LTQtNGgtNi41Yy0yLjIsMC00LDEuOC00LDR2NDUuNWMwLDIuMiwxLjgsNCw0LDRoMzEuMWMyLjIsMCw0LTEuOCw0LTR2LTUuN2MwLTIuMi0xLjgtNC00LTRaIi8+CiAgICA8cGF0aCBjbGFzcz0ic3QxMyIgZD0iTTg3NS44LDc5MC42Yy00LjMtMi4zLTkuMS0zLjUtMTQuMy0zLjVzLTEwLjEsMS4yLTE0LjMsMy41Yy00LjMsMi40LTcuNyw1LjctMTAuMiw5LjgtMi41LDQuMi0zLjcsOC44LTMuNywxMy45czEuMiw5LjgsMy43LDEzLjljMi41LDQuMiw1LjksNy41LDEwLjIsOS44LDQuMywyLjMsOS4xLDMuNSwxNC4zLDMuNXMxMC0xLjIsMTQuMy0zLjVjNC4zLTIuNCw3LjctNS43LDEwLjItOS44LDIuNC00LjEsMy43LTguOCwzLjctMTRzLTEuMi05LjgtMy43LTE0Yy0yLjQtNC4xLTUuOS03LjQtMTAuMi05LjhaTTg2MS42LDgyNy44Yy0yLjcsMC01LS42LTcuMS0xLjgtMi4xLTEuMi0zLjctMi43LTQuOS00LjgtMS4yLTIuMS0xLjgtNC4zLTEuOC02LjlzLjYtNC45LDEuOC02LjljMS4yLTIsMi44LTMuNiw0LjktNC44LDIuMS0xLjIsNC40LTEuOCw3LjEtMS44czUsLjYsNywxLjhjMi4xLDEuMiwzLjYsMi43LDQuOCw0LjgsMS4yLDIuMSwxLjgsNC4zLDEuOCw2LjlzLS42LDQuOS0xLjgsNi45Yy0xLjIsMi4xLTIuOCwzLjYtNC44LDQuOC0yLjEsMS4yLTQuNCwxLjgtNywxLjhaIi8+CiAgICA8cGF0aCBjbGFzcz0ic3Q4IiBkPSJNOTM4LjcsNzg3LjZoLTYuNWMtMi4yLDAtNCwxLjgtNCw0djIyLjZsLTIwLjItMjUuMWMtLjgtLjktMS45LTEuNS0zLjEtMS41aC01LjNjLTIuMiwwLTQsMS44LTQsNHY0NS41YzAsMi4yLDEuOCw0LDQsNGg2LjVjMi4yLDAsNC0xLjgsNC00di0yMi42bDIwLjIsMjUuMWMuOC45LDEuOSwxLjUsMy4xLDEuNWg1LjNjMi4yLDAsNC0xLjgsNC00di00NS41YzAtMi4yLTEuOC00LTQtNFoiLz4KICAgIDxwYXRoIGNsYXNzPSJzdDkiIGQ9Ik05ODkuMiw4MjcuNGgtMjIuNXYtNi43aDE4LjhjMi4yLDAsNC0xLjgsNC00di01LjVjMC0yLjItMS44LTQtNC00aC0xOC44di02aDIxLjZjMi4yLDAsNC0xLjgsNC00di01LjdjMC0yLjItMS44LTQtNC00aC0zMi4xYy0yLjIsMC00LDEuOC00LDR2NDUuNWMwLDIuMiwxLjgsNCw0LDRoMzNjMi4yLDAsNC0xLjgsNC00di01LjdjMC0yLjItMS44LTQtNC00WiIvPgogICAgPHBhdGggY2xhc3M9InN0MTQiIGQ9Ik0xMDM2LjMsODIzLjNjMS45LTEuMiwzLjUtMi44LDQuNy00LjYsMCwwLDAsMCwwLDAsMi4yLTMuMSwzLjMtNi45LDMuMy0xMS4zLDAtNi4yLTIuMi0xMS4xLTYuNS0xNC43LTQuMS0zLjQtOS42LTUuMi0xNi41LTUuMmgtMTcuN2MtMi4yLDAtNCwxLjgtNCw0djQ1LjVjMCwyLjIsMS44LDQsNCw0aDYuNWMyLjIsMCw0LTEuOCw0LTR2LTkuOGg3LjJjLjMsMCwuNSwwLC45LDBsOC41LDEyLjJjLjcsMS4xLDIsMS43LDMuMywxLjdoNy4xYzEuNSwwLDIuOS0uOCwzLjYtMi4ycy42LTIuOS0uMy00LjFsLTguMS0xMS41Wk0xMDE0LjIsODAxLjJoN2MzLjIsMCw1LjUuNiw2LjksMS43LjguNiwxLjgsMS43LDEuOCw0LjVzLTEsMy45LTEuOCw0LjVjLTEuNCwxLjItMy43LDEuOC02LjksMS44aC03di0xMi41WiIvPgogIDwvZz48L3N2Zz4=" alt=""></div>
+    <form class="nick" id="nickForm" novalidate>
+      <label for="nickInput">Your nickname</label>
+      <input id="nickInput" name="nick" type="text" maxlength="16" autocomplete="nickname" autocapitalize="off" spellcheck="false" placeholder="e.g. PegMaster">
+      <p class="help" id="nickHelp">2–16 characters. Other players will see it next to your scores.</p>
+      <button class="btn btn-primary" type="submit">PLAY</button>
+    </form>
+  </section>
+
+  <!-- ========== MENU ========== -->
+  <section class="screen left" id="menu" aria-hidden="true">
+    <div class="menu-head">
+      <img class="wordmark" src="data:image/svg+xml;base64,PHN2ZyBpZD0iVnJzdHZhXzEiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIHZlcnNpb249IjEuMSIgdmlld0JveD0iNjg2IDQ4OCA1NDYgMTA0Ij4KICAKICA8ZGVmcz4KICAgIDxzdHlsZT4KICAgICAgLnN0MCB7CiAgICAgICAgZmlsbDogdXJsKCNOZXBvam1lbm92YW7DvV9wxZllY2hvZF81OTcpOwogICAgICB9CgogICAgICAuc3QxIHsKICAgICAgICBmaWxsOiB1cmwoI05lcG9qbWVub3ZhbsO9X3DFmWVjaG9kXzU5OCk7CiAgICAgIH0KCiAgICAgIC5zdDIgewogICAgICAgIGZpbGw6IHVybCgjTmVwb2ptZW5vdmFuw71fcMWZZWNob2RfNTkzKTsKICAgICAgfQoKICAgICAgLnN0MyB7CiAgICAgICAgZmlsbDogdXJsKCNOZXBvam1lbm92YW7DvV9wxZllY2hvZF81OTQpOwogICAgICB9CgogICAgICAuc3Q0IHsKICAgICAgICBmaWxsOiB1cmwoI05lcG9qbWVub3ZhbsO9X3DFmWVjaG9kXzU5NSk7CiAgICAgIH0KCiAgICAgIC5zdDUgewogICAgICAgIGZpbGw6IHVybCgjTmVwb2ptZW5vdmFuw71fcMWZZWNob2RfNTk2KTsKICAgICAgfQoKICAgICAgLnN0NiB7CiAgICAgICAgZmlsbDogdXJsKCNOZXBvam1lbm92YW7DvV9wxZllY2hvZF81OTkpOwogICAgICB9CgogICAgICAuc3Q3IHsKICAgICAgICBmaWxsOiB1cmwoI05lcG9qbWVub3ZhbsO9X3DFmWVjaG9kXzU5MSk7CiAgICAgIH0KCiAgICAgIC5zdDggewogICAgICAgIGZpbGw6IHVybCgjTmVwb2ptZW5vdmFuw71fcMWZZWNob2RfNTkyKTsKICAgICAgfQoKICAgICAgLnN0OSB7CiAgICAgICAgZmlsbDogdXJsKCNOZXBvam1lbm92YW7DvV9wxZllY2hvZF81OTEwKTsKICAgICAgfQoKICAgICAgLnN0MTAgewogICAgICAgIGZpbGw6IHVybCgjTmVwb2ptZW5vdmFuw71fcMWZZWNob2RfNTkpOwogICAgICB9CiAgICA8L3N0eWxlPgogICAgPGxpbmVhckdyYWRpZW50IGlkPSJOZXBvam1lbm92YW7DvV9wxZllY2hvZF81OSIgZGF0YS1uYW1lPSJOZXBvam1lbm92YW7DvSBwxZllY2hvZCA1OSIgeDE9IjcxNi4yIiB5MT0iNTQ4LjQiIHgyPSI3MTYuMiIgeTI9IjQ5NC45IiBncmFkaWVudFVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+CiAgICAgIDxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iI2ZmYjAwMCIvPgogICAgICA8c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiNmZmQ4MzMiLz4KICAgIDwvbGluZWFyR3JhZGllbnQ+CiAgICA8bGluZWFyR3JhZGllbnQgaWQ9Ik5lcG9qbWVub3ZhbsO9X3DFmWVjaG9kXzU5MSIgZGF0YS1uYW1lPSJOZXBvam1lbm92YW7DvSBwxZllY2hvZCA1OSIgeDE9Ijc3Mi4zIiB4Mj0iNzcyLjMiIHhsaW5rOmhyZWY9IiNOZXBvam1lbm92YW7DvV9wxZllY2hvZF81OSIvPgogICAgPGxpbmVhckdyYWRpZW50IGlkPSJOZXBvam1lbm92YW7DvV9wxZllY2hvZF81OTIiIGRhdGEtbmFtZT0iTmVwb2ptZW5vdmFuw70gcMWZZWNob2QgNTkiIHgxPSI4MjcuMiIgeDI9IjgyNy4yIiB4bGluazpocmVmPSIjTmVwb2ptZW5vdmFuw71fcMWZZWNob2RfNTkiLz4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0iTmVwb2ptZW5vdmFuw71fcMWZZWNob2RfNTkzIiBkYXRhLW5hbWU9Ik5lcG9qbWVub3ZhbsO9IHDFmWVjaG9kIDU5IiB4MT0iODc5LjMiIHgyPSI4NzkuMyIgeGxpbms6aHJlZj0iI05lcG9qbWVub3ZhbsO9X3DFmWVjaG9kXzU5Ii8+CiAgICA8bGluZWFyR3JhZGllbnQgaWQ9Ik5lcG9qbWVub3ZhbsO9X3DFmWVjaG9kXzU5NCIgZGF0YS1uYW1lPSJOZXBvam1lbm92YW7DvSBwxZllY2hvZCA1OSIgeDE9IjkyNy40IiB4Mj0iOTI3LjQiIHhsaW5rOmhyZWY9IiNOZXBvam1lbm92YW7DvV9wxZllY2hvZF81OSIvPgogICAgPGxpbmVhckdyYWRpZW50IGlkPSJOZXBvam1lbm92YW7DvV9wxZllY2hvZF81OTUiIGRhdGEtbmFtZT0iTmVwb2ptZW5vdmFuw70gcMWZZWNob2QgNTkiIHgxPSI5OTQuNyIgeDI9Ijk5NC43IiB4bGluazpocmVmPSIjTmVwb2ptZW5vdmFuw71fcMWZZWNob2RfNTkiLz4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0iTmVwb2ptZW5vdmFuw71fcMWZZWNob2RfNTk2IiBkYXRhLW5hbWU9Ik5lcG9qbWVub3ZhbsO9IHDFmWVjaG9kIDU5IiB4MT0iMTA0My4zIiB5MT0iNTQ4LjkiIHgyPSIxMDQzLjMiIHkyPSI0OTQuNCIgeGxpbms6aHJlZj0iI05lcG9qbWVub3ZhbsO9X3DFmWVjaG9kXzU5Ii8+CiAgICA8bGluZWFyR3JhZGllbnQgaWQ9Ik5lcG9qbWVub3ZhbsO9X3DFmWVjaG9kXzU5NyIgZGF0YS1uYW1lPSJOZXBvam1lbm92YW7DvSBwxZllY2hvZCA1OSIgeDE9IjExMDAuOSIgeDI9IjExMDAuOSIgeGxpbms6aHJlZj0iI05lcG9qbWVub3ZhbsO9X3DFmWVjaG9kXzU5Ii8+CiAgICA8bGluZWFyR3JhZGllbnQgaWQ9Ik5lcG9qbWVub3ZhbsO9X3DFmWVjaG9kXzU5OCIgZGF0YS1uYW1lPSJOZXBvam1lbm92YW7DvSBwxZllY2hvZCA1OSIgeDE9IjExNTQuNSIgeDI9IjExNTQuNSIgeGxpbms6aHJlZj0iI05lcG9qbWVub3ZhbsO9X3DFmWVjaG9kXzU5Ii8+CiAgICA8bGluZWFyR3JhZGllbnQgaWQ9Ik5lcG9qbWVub3ZhbsO9X3DFmWVjaG9kXzU5OSIgZGF0YS1uYW1lPSJOZXBvam1lbm92YW7DvSBwxZllY2hvZCA1OSIgeDE9IjEyMDQuMiIgeDI9IjEyMDQuMiIgeGxpbms6aHJlZj0iI05lcG9qbWVub3ZhbsO9X3DFmWVjaG9kXzU5Ii8+CiAgICA8bGluZWFyR3JhZGllbnQgaWQ9Ik5lcG9qbWVub3ZhbsO9X3DFmWVjaG9kXzU5MTAiIGRhdGEtbmFtZT0iTmVwb2ptZW5vdmFuw70gcMWZZWNob2QgNTkiIHgxPSI5NTEuMSIgeTE9IjU4NS4yIiB4Mj0iOTUxLjEiIHkyPSI0OTUuNSIgeGxpbms6aHJlZj0iI05lcG9qbWVub3ZhbsO9X3DFmWVjaG9kXzU5Ii8+CiAgPC9kZWZzPgogIDxnPgogICAgPHBhdGggY2xhc3M9InN0MTAiIGQ9Ik02OTYuNiw1NDguNGg2LjVjMi4yLDAsNC0xLjgsNC00di0xNi4zaDE4LjF2MTYuM2MwLDIuMiwxLjgsNCw0LDRoNi41YzIuMiwwLDQtMS44LDQtNHYtNDUuNWMwLTIuMi0xLjgtNC00LTRoLTYuNWMtMi4yLDAtNCwxLjgtNCw0djE1LjZoLTE4LjF2LTE1LjZjMC0yLjItMS44LTQtNC00aC02LjVjLTIuMiwwLTQsMS44LTQsNHY0NS41YzAsMi4yLDEuOCw0LDQsNFoiLz4KICAgIDxwYXRoIGNsYXNzPSJzdDciIGQ9Ik03OTkuNSw1NDYuNmMuNy0xLjEuOC0yLjYuMy0zLjhsLTIwLjctNDUuNWMtLjYtMS40LTIuMS0yLjMtMy42LTIuM2gtNi40Yy0xLjYsMC0zLC45LTMuNiwyLjNsLTIwLjYsNDUuNWMtLjYsMS4yLS41LDIuNy4zLDMuOC43LDEuMSwyLDEuOCwzLjQsMS44aDYuN2MxLjYsMCwzLS45LDMuNy0yLjRsNC05aDE5bDQsOWMuNiwxLjUsMi4xLDIuNCwzLjcsMi40aDYuOGMxLjQsMCwyLjYtLjcsMy40LTEuOFpNNzY4LjUsNTIzLjhsMy43LTguNCwzLjcsOC40aC03LjRaIi8+CiAgICA8cGF0aCBjbGFzcz0ic3Q4IiBkPSJNODQzLDUwMC4xczAsMCwwLDBjLTQuMS0zLjQtOS42LTUuMi0xNi41LTUuMmgtMTcuN2MtMi4yLDAtNCwxLjgtNCw0djQ1LjVjMCwyLjIsMS44LDQsNCw0aDYuNWMyLjIsMCw0LTEuOCw0LTR2LTkuOGg3LjJjNi44LDAsMTIuNC0xLjcsMTYuNS01LjIsNC4zLTMuNiw2LjUtOC41LDYuNS0xNC43cy0yLjItMTEuMS02LjUtMTQuN1pNODE5LjMsNTA4LjZoN2MzLjIsMCw1LjUuNiw2LjksMS43LjguNiwxLjgsMS43LDEuOCw0LjVzLTEsMy44LTEuOCw0LjVjLTEuNCwxLjItMy44LDEuNy02LjksMS43aC03di0xMi40WiIvPgogICAgPHBhdGggY2xhc3M9InN0MiIgZD0iTTg5NS4yLDUwMC4xczAsMCwwLDBjLTQuMS0zLjQtOS42LTUuMi0xNi41LTUuMmgtMTcuN2MtMi4yLDAtNCwxLjgtNCw0djQ1LjVjMCwyLjIsMS44LDQsNCw0aDYuNWMyLjIsMCw0LTEuOCw0LTR2LTkuOGg3LjJjNi44LDAsMTIuNC0xLjcsMTYuNS01LjIsNC4zLTMuNiw2LjUtOC41LDYuNS0xNC43cy0yLjItMTEuMS02LjUtMTQuN1pNODcxLjUsNTA4LjZoN2MzLjIsMCw1LjUuNiw2LjksMS43LjguNiwxLjgsMS43LDEuOCw0LjVzLTEsMy44LTEuOCw0LjVjLTEuNCwxLjItMy44LDEuNy02LjksMS43aC03di0xMi40WiIvPgogICAgPHBhdGggY2xhc3M9InN0MyIgZD0iTTk1Mi4xLDQ5N2MtLjctMS4zLTItMi0zLjUtMmgtNi40Yy0xLjQsMC0yLjcuNy0zLjQsMS45bC0xMS4yLDE4LjQtMTEuMS0xOC40Yy0uNy0xLjItMi0xLjktMy40LTEuOWgtN2MtMS40LDAtMi44LjgtMy41LDItLjcsMS4zLS43LDIuOCwwLDRsMTcuNSwyOC43djE0LjdjMCwyLjIsMS44LDQsNCw0aDYuNGMyLjIsMCw0LTEuOCw0LTR2LTE0LjZsMTcuNS0yOC44Yy43LTEuMi44LTIuOCwwLTRaIi8+CiAgICA8cGF0aCBjbGFzcz0ic3Q0IiBkPSJNMTAxMC4zLDUzNC44aC0yMC42di0zNS44YzAtMi4yLTEuOC00LTQtNGgtNi41Yy0yLjIsMC00LDEuOC00LDR2NDUuNWMwLDIuMiwxLjgsNCw0LDRoMzEuMWMyLjIsMCw0LTEuOCw0LTR2LTUuN2MwLTIuMi0xLjgtNC00LTRaIi8+CiAgICA8cGF0aCBjbGFzcz0ic3Q1IiBkPSJNMTA1Ny42LDQ5Ny45Yy00LjMtMi4zLTkuMS0zLjUtMTQuMy0zLjVzLTEwLjEsMS4yLTE0LjMsMy41Yy00LjMsMi40LTcuNyw1LjctMTAuMiw5LjgtMi41LDQuMi0zLjcsOC44LTMuNywxMy45czEuMiw5LjgsMy43LDEzLjljMi41LDQuMiw1LjksNy41LDEwLjIsOS44LDQuMywyLjMsOS4xLDMuNSwxNC4zLDMuNXMxMC0xLjIsMTQuMy0zLjVjNC4zLTIuNCw3LjctNS43LDEwLjItOS44LDIuNC00LjEsMy43LTguOCwzLjctMTRzLTEuMi05LjgtMy43LTE0Yy0yLjQtNC4xLTUuOS03LjQtMTAuMi05LjhaTTEwNDMuNCw1MzUuMWMtMi43LDAtNS0uNi03LjEtMS44LTIuMS0xLjItMy43LTIuNy00LjktNC44LTEuMi0yLjEtMS44LTQuMy0xLjgtNi45cy42LTQuOSwxLjgtNi45YzEuMi0yLDIuOC0zLjYsNC45LTQuOCwyLjEtMS4yLDQuNC0xLjgsNy4xLTEuOHM1LC42LDcsMS44YzIuMSwxLjIsMy42LDIuNyw0LjgsNC44LDEuMiwyLjEsMS44LDQuMywxLjgsNi45cy0uNiw0LjktMS44LDYuOWMtMS4yLDIuMS0yLjgsMy42LTQuOCw0LjgtMi4xLDEuMi00LjQsMS44LTcsMS44WiIvPgogICAgPHBhdGggY2xhc3M9InN0MCIgZD0iTTExMjAuNCw0OTQuOWgtNi41Yy0yLjIsMC00LDEuOC00LDR2MjIuNmwtMjAuMi0yNS4xYy0uOC0uOS0xLjktMS41LTMuMS0xLjVoLTUuM2MtMi4yLDAtNCwxLjgtNCw0djQ1LjVjMCwyLjIsMS44LDQsNCw0aDYuNWMyLjIsMCw0LTEuOCw0LTR2LTIyLjZsMjAuMiwyNS4xYy44LjksMS45LDEuNSwzLjEsMS41aDUuM2MyLjIsMCw0LTEuOCw0LTR2LTQ1LjVjMC0yLjItMS44LTQtNC00WiIvPgogICAgPHBhdGggY2xhc3M9InN0MSIgZD0iTTExNzEsNTM0LjhoLTIyLjV2LTYuN2gxOC44YzIuMiwwLDQtMS44LDQtNHYtNS41YzAtMi4yLTEuOC00LTQtNGgtMTguOHYtNmgyMS42YzIuMiwwLDQtMS44LDQtNHYtNS43YzAtMi4yLTEuOC00LTQtNGgtMzIuMWMtMi4yLDAtNCwxLjgtNCw0djQ1LjVjMCwyLjIsMS44LDQsNCw0aDMzYzIuMiwwLDQtMS44LDQtNHYtNS43YzAtMi4yLTEuOC00LTQtNFoiLz4KICAgIDxwYXRoIGNsYXNzPSJzdDYiIGQ9Ik0xMjE4LjEsNTMwLjZjMS45LTEuMiwzLjUtMi44LDQuNy00LjYsMCwwLDAsMCwwLDAsMi4yLTMuMSwzLjMtNi45LDMuMy0xMS4zLDAtNi4yLTIuMi0xMS4xLTYuNS0xNC43LTQuMS0zLjQtOS42LTUuMi0xNi41LTUuMmgtMTcuN2MtMi4yLDAtNCwxLjgtNCw0djQ1LjVjMCwyLjIsMS44LDQsNCw0aDYuNWMyLjIsMCw0LTEuOCw0LTR2LTkuOGg3LjJjLjMsMCwuNSwwLC45LDBsOC41LDEyLjJjLjcsMS4xLDIsMS43LDMuMywxLjdoNy4xYzEuNSwwLDIuOS0uOCwzLjYtMi4ycy42LTIuOS0uMy00LjFsLTguMS0xMS41Wk0xMTk1LjksNTA4LjZoN2MzLjIsMCw1LjUuNiw2LjksMS43LjguNiwxLjgsMS43LDEuOCw0LjVzLTEsMy45LTEuOCw0LjVjLTEuNCwxLjItMy43LDEuOC02LjksMS44aC03di0xMi41WiIvPgogIDwvZz4KICA8cGF0aCBjbGFzcz0ic3Q5IiBkPSJNOTUwLjksNTg1LjJjLTI5LjQsMC01Ni44LTYuNi03My40LTE3LjYtMi4zLTEuNS0yLjktNC42LTEuNC02LjksMS41LTIuMyw0LjYtMi45LDYuOS0xLjQsMTUsMTAsNDAuNCwxNiw2Ny44LDE2czUzLjEtNiw2OC4xLTE2LjFjMi4zLTEuNSw1LjQtLjksNi45LDEuNCwxLjUsMi4zLjksNS40LTEuNCw2LjktMTYuNiwxMS4yLTQ0LjEsMTcuOC03My42LDE3LjhaIi8+Cjwvc3ZnPg==" alt="Happy Loner">
+    </div>
+    <div class="carousel" id="carousel"></div>
+    <div class="dots" id="dots"></div>
+    <div class="menu-foot"><button class="btn btn-ghost" id="toScores">Best Score</button>
+      <div class="player">Playing as <b id="playerName"></b><button id="changeNick">Change</button></div></div>
+  </section>
+
+  <!-- ========== GAME ========== -->
+  <section class="screen" id="game" aria-hidden="true">
+    <header class="appbar">
+      <button class="bar-btn start" id="restart" aria-label="Restart game">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v5h5"/></svg>
+        <span class="lbl">Restart game</span>
+      </button>
+      <h1 id="gameTitle"></h1>
+      <button class="bar-btn end" id="quit" aria-label="Quit game">
+        <span class="lbl">Quit game</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </header>
+    <div class="game-body">
+      <div class="hud">
+        <div class="counter" id="counter" aria-live="polite" aria-label="Pegs left">
+          <span class="digit"><span>3</span></span><span class="digit"><span>7</span></span>
+        </div>
+        <div class="timer" id="timer" title="">00:00</div>
+      </div>
+      <div class="stage" id="stage"><div class="board" id="board"></div></div>
+      <div class="game-foot" id="gameFoot"></div>
+    </div>
+
+    <div class="modal" id="result" role="dialog" aria-modal="true" aria-label="Game result" hidden>
+      <div class="stack">
+      <div class="trophy" id="trophy" hidden><svg viewBox="0 0 120 132" aria-hidden="true">
+          <defs>
+            <linearGradient id="tg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFD833"/><stop offset="1" stop-color="#FFB000"/></linearGradient>
+            <clipPath id="tcup"><path d="M27 20h66v22c0 21-14.8 37-33 37S27 63 27 42z"/></clipPath>
+          </defs>
+          <!-- handles -->
+          <path d="M30 30H20c-6 0-9 4-8 10 1.6 10 9 18 21 20" fill="none" stroke="#D38D13" stroke-width="9" stroke-linecap="round" transform="translate(0 2.5)"/>
+          <path d="M30 30H20c-6 0-9 4-8 10 1.6 10 9 18 21 20" fill="none" stroke="#FFBC00" stroke-width="9" stroke-linecap="round"/>
+          <path d="M90 30h10c6 0 9 4 8 10-1.6 10-9 18-21 20" fill="none" stroke="#D38D13" stroke-width="9" stroke-linecap="round" transform="translate(0 2.5)"/>
+          <path d="M90 30h10c6 0 9 4 8 10-1.6 10-9 18-21 20" fill="none" stroke="#FFBC00" stroke-width="9" stroke-linecap="round"/>
+          <!-- stem + base -->
+          <path d="M53 76h14l3 16H50z" fill="#E5A300"/>
+          <rect x="36" y="90" width="48" height="12" rx="6" fill="#FFBC00"/>
+          <rect x="36" y="96" width="48" height="6" rx="3" fill="#E5A300"/>
+          <rect x="26" y="104" width="68" height="20" rx="7" fill="#94A6AF"/>
+          <rect x="26" y="102" width="68" height="18" rx="7" fill="#CEE6FF"/>
+          <!-- cup -->
+          <path d="M27 20h66v22c0 21-14.8 37-33 37S27 63 27 42z" fill="#FFBC00"/>
+          <g clip-path="url(#tcup)"><ellipse cx="60" cy="88" rx="48" ry="30" fill="#EBAE0B"/></g>
+          <rect x="22" y="13" width="76" height="11" rx="5.5" fill="#FFC336"/>
+          <rect x="22" y="13" width="76" height="5" rx="2.5" fill="#FFDF43"/>
+          <!-- highlights -->
+          <ellipse cx="36" cy="34" rx="4" ry="9" fill="#FFDF43" transform="rotate(14 36 34)"/>
+          <circle cx="38" cy="50" r="2" fill="#FFDF43"/>
+        </svg></div>
+      <div class="box">
+        <div id="resBadge"></div>
+        <h3 id="resTitle" hidden></h3>
+        <p class="sub" id="resSub"></p>
+        <div class="score-big"><b id="resPegs">0</b> score</div>
+        <div class="time-big"><b id="resTime">00:00</b></div>
+        <div class="row">
+          <button class="btn btn-primary" id="resAgain">Play again</button>
+          <button class="btn btn-ghost" id="resMenu">Back to menu</button>
+        </div>
+      </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== SCORES ========== -->
+  <section class="screen" id="scores" aria-hidden="true">
+    <header class="appbar">
+      <button class="bar-btn start" id="scoresBack" aria-label="Back to menu">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12H5M11 5l-7 7 7 7"/></svg>
+      </button>
+      <h1>Best Score</h1><span></span>
+    </header>
+    <div class="scroll"><div class="scores-grid" id="scoresBody"></div></div>
+  </section>
+
+  <!-- shared confirm dialog -->
+  <div class="modal" id="confirm" role="dialog" aria-modal="true" hidden>
+    <div class="box"><p class="q" id="confirmText"></p>
+      <div class="row"><button class="btn btn-ghost" id="confirmNo">Cancel</button><button class="btn btn-primary" id="confirmYes">OK</button></div></div>
+  </div>
+</div>
+
+<script>
+(() => {
+/* ================================================================
+   MODES – herní plány.  Legenda mapy:
+     ' ' mimo plán   'o' kámen   '.' prázdné pole
+     'x' skála (nedá se přeskočit ani na ni doskočit)
+     '*' cílové pole (prázdné)   '@' cílové pole s kamenem
+   goal: poslední kámen musí skončit na cílovém poli
+   Pro zapnutí módu stačí přepnout active:true.
+   ================================================================ */
+const MODES = [
+  // perfect: kolik kamenů je nejlepší možný výsledek (ze středu evropského plánu jde nejlíp na 2)
+  { id:'classic', name:'Classic', active:true, perfect:2,
+    desc:'The 37-hole board from the old Samotář box. Start in the centre, two pegs left is perfect.',
+    map:['  ooo  ',
+         ' ooooo ',
+         'ooooooo',
+         'ooo.ooo',
+         'ooooooo',
+         ' ooooo ',
+         '  ooo  '] },
+  { id:'cross', name:'Cross', active:true, goal:true,
+    desc:'The English 33-hole cross. Your last peg has to finish in the centre.',
+    map:['  ooo  ',
+         '  ooo  ',
+         'ooooooo',
+         'ooo*ooo',
+         'ooooooo',
+         '  ooo  ',
+         '  ooo  '] },
+  { id:'rocks', name:'Rocks', active:true,
+    desc:'Rocks are scattered across the board. You can’t jump over them or land on them.',
+    map:[' oooo ',
+         'ooxooo',
+         'oooooo',
+         'oo.ooo',
+         'oooooo',
+         'oooxoo',
+         ' oooo '] },
+  { id:'diamond', name:'Diamond', active:true,
+    desc:'A 41-hole diamond with four rocks on its sides. The longest game of the set.',
+    map:['    o    ',
+         '   ooo   ',
+         '  oo.oo  ',
+         ' xooooox ',
+         'ooooooooo',
+         ' xooooox ',
+         '  ooooo  ',
+         '   ooo   ',
+         '    o    '] },
+];
+// Ověřeno solverem: Cross, Rocks a Diamond jdou dohrát na 1 kámen, Classic (start ze středu) nejlépe na 2.
+
+const STR = {
+  best: v => `Your best score: ${v}`,
+  bestNone: 'Your best score: –',
+  soon: 'Coming soon',
+  start: 'START',
+  winTitle: 'Happy Loner!',
+  winSub: n => n===1 ? 'Only one peg left. That’s a perfect game.' : `${n} pegs left. That’s the best possible result on this board.`,
+  goalMiss: 'One peg left, but not on the target hole.',
+  endTitle: n => n===1 ? '1 peg left' : `${n} pegs left`,
+  endSub: 'No more jumps possible.',
+  newBest: 'New record',
+  quitQ: 'Quit this game? Your progress on this board will be lost.',
+  quitYes: 'Quit',
+  restartQ: 'Restart this game? The current board will be lost.',
+  restartYes: 'Restart',
+  clearQ: 'Delete all scores saved on this device?',
+  clearYes: 'Delete',
+  nickShort: 'Use at least 2 characters.',
+  nickChars: 'Use letters, numbers, spaces, dots, dashes or underscores.',
+  nickHelp: '2–16 characters. Other players will see it next to your scores.',
+};
+
+/* ---------- storage (per browser) ----------
+   Každý výsledek nese i hráče (nickname), takže ho jde později
+   beze změny formátu poslat na veřejný žebříček. */
+const KEY = 'happyloner.v1';
+function load(){
+  try{ const d = JSON.parse(localStorage.getItem(KEY)); if (d && d.best) return Object.assign({player:''}, d); }catch(e){}
+  return {player:'', best:{}, history:[]};
+}
+function save(d){ try{ localStorage.setItem(KEY, JSON.stringify(d)); }catch(e){} }
+let store = load();
+const better = (a,b) => !b || a.pegs < b.pegs || (a.pegs === b.pegs && a.time < b.time);
+
+/* ---------- helpers ---------- */
+const $ = s => document.querySelector(s);
+const fmt = ms => { const s = Math.floor(ms/1000); return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0'); };
+const pad2 = n => String(n).padStart(2,'0');
+const fmtDate = t => new Date(t).toLocaleDateString(undefined,{day:'numeric',month:'short',year:'numeric'});
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+// peg glyph – geometry 1:1 from XD "zeton" (32px, highlight path + dot)
+const PEG_SVG = `<svg viewBox="0 0 32 32" aria-hidden="true">
+  <circle class="ring" cx="16" cy="16" r="20"/>
+  <circle class="body" cx="16" cy="16" r="16"/>
+  <path fill="#fff" d="M14.63 5.88c.1 1.37-2.58.6-4.94 4.52-.95 1.58-2.42 5.99-4.94 4.94-2.65-1.1-2.42-5.15 1.89-8.62 3.72-2.99 7.89-2.21 7.99-.84Z"/>
+  <circle fill="#fff" cx="18.12" cy="5.39" r="1"/>
+  <path class="smile" d="M9.5 18.5 Q16 25 22.5 18.5"/>
+</svg>`;
+
+/* ================================================================
+   ENGINE – pure rules, no DOM
+   ================================================================ */
+function parse(mode){
+  const rows = mode.map.length, cols = Math.max(...mode.map.map(r=>r.length));
+  const cells = []; const pegs = new Set();
+  mode.map.forEach((line,r)=>[...line].forEach((ch,c)=>{
+    if (ch===' ') return;
+    const k = r*cols+c;
+    cells[k] = {r,c,type: ch==='x'?'rock':'hole', goal: ch==='*'||ch==='@'};
+    if (ch==='o'||ch==='@') pegs.add(k);
+  }));
+  return {rows,cols,cells,pegs};
+}
+const DIRS = [[0,1],[1,0],[0,-1],[-1,0]];
+function movesFrom(b, pegs, k){
+  const out = [];
+  if (!pegs.has(k)) return out;
+  const {r,c} = b.cells[k];
+  for (const [dr,dc] of DIRS){
+    const r1=r+dr,c1=c+dc,r2=r+2*dr,c2=c+2*dc;
+    if (r2<0||c2<0||r2>=b.rows||c2>=b.cols||c1<0||r1<0) continue;
+    const m=r1*b.cols+c1, t=r2*b.cols+c2;
+    const cm=b.cells[m], ct=b.cells[t];
+    if (cm && cm.type==='hole' && pegs.has(m) && ct && ct.type==='hole' && !pegs.has(t)) out.push({from:k,over:m,to:t});
+  }
+  return out;
+}
+const anyMove = (b,pegs) => [...pegs].some(k => movesFrom(b,pegs,k).length);
+
+/* ================================================================
+   UI
+   ================================================================ */
+let G = null, tick = null, busy = false;
+
+function show(id){
+  for (const s of document.querySelectorAll('.screen')) s.setAttribute('aria-hidden', s.id===id ? 'false':'true');
+  if (id==='menu'){ $('#playerName').textContent = store.player; requestAnimationFrame(()=>$('#carousel').dispatchEvent(new Event('scroll'))); }
+}
+
+/* ---------- INTRO / nickname ---------- */
+const NICK_RE = /^[\p{L}\p{N} _.\-]+$/u;
+function openIntro(){
+  const inp = $('#nickInput'); inp.value = store.player || '';
+  setHelp(STR.nickHelp, false); show('intro');
+}
+function setHelp(t, err){ const h = $('#nickHelp'); h.textContent = t; h.classList.toggle('err', err); $('#nickInput').classList.toggle('bad', err); }
+$('#nickForm').addEventListener('submit', e => {
+  e.preventDefault();
+  const v = $('#nickInput').value.trim().replace(/\s+/g,' ');
+  if (v.length < 2) return setHelp(STR.nickShort, true);
+  if (!NICK_RE.test(v)) return setHelp(STR.nickChars, true);
+  store.player = v; save(store); $('#nickInput').blur(); show('menu');
+});
+$('#nickInput').addEventListener('input', () => setHelp(STR.nickHelp, false));
+$('#changeNick').onclick = openIntro;
+
+/* ---------- MENU ---------- */
+function miniMap(mode){
+  const b = parse(mode), u = 16, w = b.cols*u, h = b.rows*u;
+  let s = `<svg viewBox="-4 -4 ${w+8} ${h+8}" aria-hidden="true">`;
+  b.cells.forEach(cell => { if(!cell) return;
+    s += `<rect x="${cell.c*u-2}" y="${cell.r*u-2}" width="${u+4}" height="${u+4}" rx="4" fill="#425161"/>`; });
+  b.cells.forEach((cell,k) => { if(!cell) return;
+    const x=cell.c*u, y=cell.r*u;
+    s += `<rect x="${x+1}" y="${y+1}" width="${u-2}" height="${u-2}" rx="3" fill="${cell.type==='rock'?'#5B6B7C':'#131F2C'}"/>`;
+    if (b.pegs.has(k)) s += `<circle cx="${x+u/2}" cy="${y+u/2}" r="${u*.3}" fill="#BDC6D1"/><circle cx="${x+u/2-1.6}" cy="${y+u/2-1.6}" r="${u*.08}" fill="#fff"/>`;
+    if (cell.goal) s += `<circle cx="${x+u/2}" cy="${y+u/2}" r="${u*.22}" fill="none" stroke="#FFC336" stroke-width="1.5"/>`;
+  });
+  return s + `</svg>`;
+}
+function buildMenu(){
+  const car = $('#carousel'), dots = $('#dots');
+  car.innerHTML = MODES.map((m,i)=>`
+    <article class="card" data-i="${i}">
+      <div class="art">${miniMap(m)}</div>
+      <h2>${m.name}${m.id==='classic'?' game':''}</h2>
+      <p>${m.desc}</p>
+      ${m.active ? `<button class="btn btn-primary" data-start="${m.id}">${STR.start}</button>`
+                 : `<button class="btn btn-primary" disabled>${STR.soon}</button>`}
+    </article>`).join('');
+  dots.innerHTML = MODES.map(()=>'<i></i>').join('');
+  car.addEventListener('click', e => {
+    const b = e.target.closest('[data-start]'); if (b) return startGame(b.dataset.start);
+    const card = e.target.closest('.card'); if (card && !card.classList.contains('current')) card.scrollIntoView({behavior:'smooth',inline:'center',block:'nearest'});
+  });
+  let cur = -1, raf = 0;
+  const update = () => {
+    raf = 0;
+    const mid = car.scrollLeft + car.clientWidth/2; let best=0, bd=1e9;
+    car.querySelectorAll('.card').forEach((c,i)=>{
+      const d = Math.abs(c.offsetLeft + c.offsetWidth/2 - mid);
+      if (d < bd){ bd = d; best = i; }
+      c.style.setProperty('--k', Math.min(1, d / (c.offsetWidth + 16)).toFixed(3));
+    });
+    if (best !== cur){
+      cur = best;
+      car.querySelectorAll('.card').forEach((c,i)=>c.classList.toggle('current', i===best));
+      [...dots.children].forEach((d,i)=>d.classList.toggle('on', i===best));
+    }
+  };
+  car.addEventListener('scroll', () => { if (!raf) raf = requestAnimationFrame(update); }, {passive:true});
+  addEventListener('resize', () => { if (!raf) raf = requestAnimationFrame(update); });
+  requestAnimationFrame(update);
+}
+
+/* ---------- GAME ---------- */
+function startGame(modeId, restore){
+  const mode = MODES.find(m=>m.id===modeId);
+  const b = parse(mode);
+  stopClock();
+  G = { mode, b, pegs: restore ? new Set(restore.pegs) : new Set(b.pegs), sel:null,
+        elapsed: restore ? restore.elapsed : 0, started: null, moves: restore ? restore.moves : 0, over:false, pegEls:new Map() };
+  $('#gameTitle').textContent = '';
+  $('#result').hidden = true; $('#confirm').hidden = true;
+  $('#timer').textContent = fmt(G.elapsed);
+  setCounter(G.pegs.size, true);
+  renderFoot();
+  show('game');
+  buildBoard();
+  if (G.moves > 0) startClock();
+}
+
+function layout(){
+  const b = G.b, st = $('#stage'), cs0 = getComputedStyle(st);
+  const W = st.clientWidth - parseFloat(cs0.paddingLeft) - parseFloat(cs0.paddingRight);
+  const H = st.clientHeight - parseFloat(cs0.paddingTop) - parseFloat(cs0.paddingBottom);
+  // design: pitch 54, cell 50, gap 4, frame pad 4
+  const p = Math.max(26, Math.min(84, W/(b.cols + 4/54), H/(b.rows + 4/54)));
+  const board = $('#board');
+  board.style.setProperty('--p', p+'px');
+  const pad = p*4/54, cs = p*50/54;
+  board.style.width = (b.cols*p + pad)+'px';
+  board.style.height = (b.rows*p + pad)+'px';
+  G.geo = {p,pad,cs};
+  return G.geo;
+}
+const center = k => { const {p,pad,cs} = G.geo, c = G.b.cells[k]; return {x: pad + c.c*p + cs/2, y: pad + c.r*p + cs/2}; };
+
+function buildBoard(){
+  const board = $('#board'); board.innerHTML = '';
+  const {p,pad,cs} = layout(), b = G.b;
+  // frame: union of padded cells, softened with a goo filter so inner & outer corners round like the XD "pole" path
+  const fw = b.cols*p + pad, fh = b.rows*p + pad, blur = p*.09;
+  let rects = '';
+  b.cells.forEach(c => { if (c) rects += `<rect x="${c.c*p}" y="${c.r*p}" width="${p+pad}" height="${p+pad}"/>`; });
+  board.insertAdjacentHTML('beforeend', `<svg class="frame" width="${fw}" height="${fh}" viewBox="0 0 ${fw} ${fh}">
+    <defs><filter id="goo" x="-10%" y="-10%" width="120%" height="120%">
+      <feGaussianBlur stdDeviation="${blur}"/><feColorMatrix values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 24 -11"/></filter></defs>
+    <g filter="url(#goo)" fill="#425161">${rects}</g></svg>`);
+  G.cellEls = [];
+  b.cells.forEach((c,k) => { if (!c) return;
+    const el = document.createElement('div');
+    el.className = 'cell' + (c.type==='rock'?' rock':'') + (c.goal?' goal':'');
+    el.style.cssText = `left:${pad + c.c*p}px;top:${pad + c.r*p}px;width:${cs}px;height:${cs}px`;
+    board.appendChild(el); G.cellEls[k] = el; });
+  G.hintLayer = document.createElement('div'); board.appendChild(G.hintLayer);
+  G.pegEls = new Map();
+  for (const k of G.pegs) addPeg(k);
+  const hit = document.createElement('div'); hit.className = 'hit'; board.appendChild(hit);
+  hit.addEventListener('pointerdown', onTap);
+}
+function addPeg(k){
+  const el = document.createElement('div'); el.className = 'peg'; el.innerHTML = PEG_SVG;
+  const {x,y} = center(k); el.style.left = x+'px'; el.style.top = y+'px';
+  $('#board').insertBefore(el, $('#board .hit')); G.pegEls.set(k, el);
+}
+function repositionAll(){
+  if (!G || busy || $('#game').getAttribute('aria-hidden')==='true') return;
+  const sel = G.sel; buildBoard();
+  if (G.over) for (const el of G.pegEls.values()) el.classList.add('gold', ...(G.win?['loner']:[]));
+  G.sel = null; if (sel!=null) select(sel);
+}
+
+function cellAt(ev){
+  const r = $('#board').getBoundingClientRect(), {p,pad} = G.geo;
+  const c = Math.floor((ev.clientX - r.left - pad/2)/p), row = Math.floor((ev.clientY - r.top - pad/2)/p);
+  if (c<0||row<0||c>=G.b.cols||row>=G.b.rows) return null;
+  const k = row*G.b.cols + c; return G.b.cells[k] ? k : null;
+}
+function onTap(ev){
+  if (busy || G.over) return;
+  const k = cellAt(ev); if (k==null) { select(null); return; }
+  if (G.sel!=null){
+    const mv = movesFrom(G.b,G.pegs,G.sel).find(m=>m.to===k);
+    if (mv) { jump(mv); return; }
+  }
+  if (k===G.sel) return;                      // already selected: keep it
+  if (G.pegs.has(k)) select(k); else select(null);
+}
+// selecting a peg only rings & pulses the peg; the hole keeps its colour
+function select(k){
+  if (G.sel!=null) G.pegEls.get(G.sel)?.classList.remove('sel');
+  G.sel = k; G.hintLayer.innerHTML = '';
+  if (k==null) return;
+  G.pegEls.get(k).classList.add('sel');
+  for (const m of movesFrom(G.b,G.pegs,k)){
+    const {x,y} = center(m.to);
+    const h = document.createElement('div'); h.className='hint'; h.dataset.k = m.to;
+    h.style.left = x+'px'; h.style.top = y+'px';
+    h.innerHTML = '<svg viewBox="0 0 36 36"><circle cx="18" cy="18" r="16"/></svg>';
+    G.hintLayer.appendChild(h);
+  }
+}
+const wait = ms => new Promise(r=>setTimeout(r, reduce ? 0 : ms));
+
+async function jump(m){
+  busy = true;
+  if (G.started==null) startClock();
+  const el = G.pegEls.get(m.from), victim = G.pegEls.get(m.over);
+  G.hintLayer.querySelectorAll('.hint').forEach(h => { if (+h.dataset.k===m.to) h.classList.add('hot'); else h.remove(); });
+  el.classList.remove('sel');
+  const {x,y} = center(m.to);
+  el.classList.add('fly'); el.style.left = x+'px'; el.style.top = y+'px';
+  G.pegs.delete(m.from); G.pegs.delete(m.over); G.pegs.add(m.to);
+  G.pegEls.delete(m.from); G.pegEls.delete(m.over); G.pegEls.set(m.to, el);
+  G.moves++; G.sel = null;
+  await wait(130);
+  // jumped peg collapses with 4 diagonal shards
+  victim.classList.add('dying');
+  const c = center(m.over);
+  for (const a of [45,135,225,315]){
+    const s = document.createElement('i'); s.className='shard'; s.style.left=c.x+'px'; s.style.top=c.y+'px'; s.style.setProperty('--a', a+'deg');
+    $('#board').insertBefore(s, $('#board .hit')); setTimeout(()=>s.remove(), 500);
+  }
+  setCounter(G.pegs.size);
+  await wait(140);
+  el.classList.remove('fly'); G.hintLayer.innerHTML='';
+  setTimeout(()=>victim.remove(), 250);
+  if (navigator.vibrate) try{ navigator.vibrate(8); }catch(e){}
+  if (!G) { busy = false; return; }
+  if (!anyMove(G.b,G.pegs)) { await endGame(m.to); }
+  else if (movesFrom(G.b,G.pegs,m.to).length) select(m.to);  // keep chaining with the same peg
+  busy = false;
+}
+
+async function endGame(lastK){
+  const g = G;
+  g.over = true; stopClock();
+  if (lastK!=null) g.pegEls.get(lastK)?.classList.add('sel');
+  await wait(450);
+  const pegs = g.pegs.size;
+  const goalOk = !g.mode.goal || (pegs===1 && g.b.cells[[...g.pegs][0]].goal);
+  const win = g.win = pegs <= (g.mode.perfect||1) && (g.mode.goal ? goalOk : true);
+  let i = 0;
+  for (const el of g.pegEls.values()){ setTimeout(()=>{ el.classList.remove('sel'); el.classList.add('gold'); if (win) el.classList.add('loner'); }, reduce?0:i++*40); }
+  const res = {player:store.player, mode:g.mode.id, pegs, time:Math.round(g.elapsed), moves:g.moves, date:Date.now(), win};
+  const isBest = better(res, store.best[g.mode.id]);
+  if (isBest) store.best[g.mode.id] = res;
+  store.history.unshift(res); store.history = store.history.slice(0,30);
+  save(store); renderFoot();
+  await wait(1300);
+  if (G !== g) return;
+  showResult({pegs, time:g.elapsed, isBest, win, goalMiss: pegs===1 && !!g.mode.goal && !win});
+}
+
+function showResult({pegs, time, isBest, win, goalMiss}){
+  $('#resBadge').innerHTML = isBest ? `<span class="badge">${STR.newBest}</span>` : '';
+  $('#trophy').hidden = !isBest; $('#result .stack').classList.toggle('has-trophy', !!isBest);
+  $('#resTitle').textContent = STR.winTitle; $('#resTitle').hidden = !win;
+  $('#resSub').textContent = win ? STR.winSub(pegs) : (goalMiss ? STR.goalMiss : '');
+  $('#resPegs').textContent = pad2(pegs); $('#resTime').textContent = fmt(time);
+  $('#result').hidden = false; $('#resAgain').focus({preventScroll:true});
+  if (isBest) setTimeout(confetti, reduce ? 0 : 280);
+}
+
+/* red confetti burst from the popup */
+function confetti(){
+  if (reduce) return;
+  const cv = document.createElement('canvas'); cv.id = 'confetti'; $('#result').appendChild(cv);
+  const dpr = Math.min(2, devicePixelRatio||1), W = innerWidth, H = innerHeight;
+  cv.width = W*dpr; cv.height = H*dpr; const ctx = cv.getContext('2d'); ctx.scale(dpr,dpr);
+  const tr = $('#trophy').getBoundingClientRect();
+  const ox = tr.left + tr.width/2, oy = tr.top + tr.height*0.45;
+  const cols = ['#FA155A','#FF3D77','#D80F4C','#FF6B93','#FFFFFF'];
+  const P = Array.from({length:140}, (_,i) => {
+    const a = Math.random()*Math.PI*2, v = 6 + Math.random()*11;
+    return {x:ox, y:oy, vx:Math.cos(a)*v, vy:Math.sin(a)*v - 5, w:5+Math.random()*7, h:3+Math.random()*5,
+      r:Math.random()*6, vr:(Math.random()-.5)*.4, c: i%9===0 ? cols[4] : cols[i%4], life: 0};
+  });
+  let t0 = performance.now();
+  (function frame(now){
+    const t = (now - t0)/1000; ctx.clearRect(0,0,W,H);
+    let alive = 0;
+    for (const p of P){
+      p.vx *= .985; p.vy = p.vy*.985 + .32; p.x += p.vx; p.y += p.vy; p.r += p.vr;
+      const o = Math.max(0, 1 - Math.max(0,t-1.4)/1.2);
+      if (o>0 && p.y < H+20) alive++;
+      ctx.save(); ctx.globalAlpha = o; ctx.translate(p.x,p.y); ctx.rotate(p.r);
+      ctx.fillStyle = p.c; ctx.fillRect(-p.w/2,-p.h/2,p.w,p.h*Math.abs(Math.cos(p.r*1.7))+1); ctx.restore();
+    }
+    if (alive && t < 3) requestAnimationFrame(frame); else cv.remove();
+  })(t0);
+}
+
+/* easter egg: triple-tap the timer to preview the record popup (nothing is saved) */
+let eggTaps = 0, eggT = null;
+$('#timer').addEventListener('click', () => {
+  eggTaps++; clearTimeout(eggT); eggT = setTimeout(()=>eggTaps=0, 600);
+  if (eggTaps < 3 || !G || !$('#result').hidden) return;
+  eggTaps = 0; stopClock(); select(null);
+  showResult({pegs:G.pegs.size, time:G.elapsed, isBest:true, win:false, goalMiss:false});
+});
+
+// counter: only the digits that change roll down
+function setCounter(n, instant){
+  const txt = pad2(n), slots = $('#counter').querySelectorAll('.digit');
+  $('#counter').setAttribute('aria-label', `${n} pegs left`);
+  [...txt].forEach((ch,i) => {
+    const slot = slots[i], cur = slot.querySelector('span:not(.out)');
+    if (instant || !cur){ slot.innerHTML = `<span>${ch}</span>`; return; }
+    if (cur.textContent === ch) return;
+    slot.querySelectorAll('.out').forEach(s=>s.remove());
+    cur.className = 'out'; setTimeout(()=>cur.remove(), 360);
+    slot.insertAdjacentHTML('beforeend', `<span class="in">${ch}</span>`);
+  });
+}
+function renderFoot(){
+  const b = store.best[G.mode.id];
+  $('#gameFoot').innerHTML = b ? `${STR.best(pad2(b.pegs))}<small>in ${fmt(b.time)}</small>` : `${STR.bestNone}<small>&nbsp;</small>`;
+}
+function startClock(){
+  if (tick) clearInterval(tick);
+  G.started = performance.now() - G.elapsed;
+  tick = setInterval(()=>{ if (!G || G.started==null) return; G.elapsed = performance.now() - G.started; $('#timer').textContent = fmt(G.elapsed); }, 250);
+}
+function stopClock(){ if (tick) clearInterval(tick); tick = null; if (G && G.started!=null){ G.elapsed = performance.now()-G.started; G.started = null; } }
+
+/* ---------- SCORES ---------- */
+function renderScores(){
+  const open = renderScores.open ?? new Set([MODES[0].id]);   // first category open by default
+  renderScores.open = open;
+  const cards = MODES.map(m => {
+    const b = store.best[m.id];
+    const games = store.history.filter(r => r.mode===m.id);
+    const isOpen = open.has(m.id);
+    const list = games.length
+      ? `<ul class="hist">` + games.map(r => `<li><b>${pad2(r.pegs)}</b><span>${esc(r.player||'—')} · ${fmt(r.time)}</span><time>${fmtDate(r.date)}</time></li>`).join('') + `</ul>`
+      : `<p class="empty">No games on this board yet.</p>`;
+    return `<section class="best-card${isOpen?' open':''}">
+      <button class="best-head" data-mode="${m.id}" aria-expanded="${isOpen}" aria-controls="hist-${m.id}">
+        <span class="mini">${b ? pad2(b.pegs) : '–'}</span>
+        <span class="info"><span class="name">${m.name}</span>
+          <span class="meta">${b ? `<b>${b.pegs}</b> ${b.pegs===1?'peg':'pegs'} left · <b>${fmt(b.time)}</b>` : 'No finished game yet'}</span>
+          <span class="when">${b ? fmtDate(b.date) : '&nbsp;'}</span></span>
+        <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+      </button>
+      <div class="best-body" id="hist-${m.id}"><div class="best-inner">
+        <h5 class="sec-title">Recent games · ${games.length}</h5>${list}</div></div>
+    </section>`; }).join('');
+  $('#scoresBody').innerHTML = `<h5 class="sec-title">${esc(store.player)}’s best</h5>${cards}`
+    + (store.history.length ? `<button class="danger" id="clearScores">Clear scores</button>` : '');
+  $('#scoresBody').querySelectorAll('.best-head').forEach(btn => btn.onclick = () => {
+    const id = btn.dataset.mode, card = btn.parentElement, on = !card.classList.contains('open');
+    card.classList.toggle('open', on); btn.setAttribute('aria-expanded', on);
+    on ? open.add(id) : open.delete(id);
+  });
+  const c = $('#clearScores');
+  if (c) c.onclick = () => openConfirm(STR.clearQ, STR.clearYes, () => { store.best = {}; store.history = []; save(store); renderScores(); });
+}
+
+/* ---------- confirm (no native dialogs) ---------- */
+let confirmCb = null, confirmCancel = null;
+function openConfirm(text, yes, cb, cancel){
+  $('#confirmText').textContent = text; $('#confirmYes').textContent = yes;
+  confirmCb = cb; confirmCancel = cancel; $('#confirm').hidden = false; $('#confirmNo').focus({preventScroll:true});
+}
+$('#confirmNo').onclick = () => { $('#confirm').hidden = true; confirmCancel && confirmCancel(); };
+$('#confirmYes').onclick = () => { $('#confirm').hidden = true; confirmCb && confirmCb(); };
+addEventListener('keydown', e => { if (e.key==='Escape' && !$('#confirm').hidden) $('#confirmNo').click(); });
+
+/* ---------- wiring ---------- */
+const resumeIfRunning = () => { if (G && !G.over && G.moves) startClock(); };
+const leaveGame = () => { stopClock(); G = null; busy = false; show('menu'); };
+$('#toScores').onclick = () => { renderScores(); show('scores'); };
+$('#scoresBack').onclick = () => show('menu');
+$('#quit').onclick = () => {
+  if (!G) return;
+  if (G.over || G.moves===0) return leaveGame();
+  stopClock(); openConfirm(STR.quitQ, STR.quitYes, leaveGame, resumeIfRunning);
+};
+$('#restart').onclick = () => {
+  if (!G || busy) return;
+  if (G.over || G.moves===0) return startGame(G.mode.id);
+  stopClock(); openConfirm(STR.restartQ, STR.restartYes, () => startGame(G.mode.id), resumeIfRunning);
+};
+$('#resAgain').onclick = () => startGame(G.mode.id);
+$('#resMenu').onclick = leaveGame;
+let rz; addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(repositionAll, 120); });
+document.addEventListener('visibilitychange', () => { if (!G || G.over || !G.moves || !$('#confirm').hidden) return; document.hidden ? stopClock() : startClock(); });
+
+/* ---------- boot (keeps a running game across live updates) ---------- */
+function snapshot(){ return G && !G.over ? {mode:G.mode.id, pegs:[...G.pegs], elapsed:G.elapsed, moves:G.moves} : {}; }
+window.claude?.hot?.snapshot?.(snapshot);
+function start(data){
+  buildMenu();
+  if (store.player && data && data.mode && MODES.some(m=>m.id===data.mode)) startGame(data.mode, data);
+  else openIntro();
+}
+window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
+})();
+</script>
+</body>
+</html>
