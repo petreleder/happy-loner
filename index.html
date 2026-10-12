@@ -785,10 +785,17 @@ $('#nickForm').addEventListener('submit', e => {
 });
 $('#nickInput').addEventListener('input', () => setHelp(STR.nickHelp, false));
 // keep PLAY visible above the on-screen keyboard
-const showPlay = () => { const b = $('#nickForm button'); if (b) b.scrollIntoView({block:'end', behavior:'smooth'}); };
-$('#nickInput').addEventListener('focus', () => { $('#intro').classList.add('typing'); setTimeout(showPlay, 350); });
-$('#nickInput').addEventListener('blur', () => $('#intro').classList.remove('typing'));
-if (window.visualViewport) visualViewport.addEventListener('resize', () => { if (document.activeElement === $('#nickInput')) showPlay(); });
+// iOS doesn't resize the page for the keyboard, so while typing the app is fitted to the visible area
+const vv = window.visualViewport;
+const fitToKeyboard = () => {
+  const typing = document.activeElement === $('#nickInput');
+  $('#app').style.height = typing && vv ? vv.height + 'px' : '';
+  if (typing && vv && (window.scrollY || vv.offsetTop)) window.scrollTo(0, 0);
+  if (typing){ const b = $('#nickForm button'); b && b.scrollIntoView({block:'nearest'}); }
+};
+$('#nickInput').addEventListener('focus', () => { $('#intro').classList.add('typing'); setTimeout(fitToKeyboard, 50); setTimeout(fitToKeyboard, 400); });
+$('#nickInput').addEventListener('blur', () => { $('#intro').classList.remove('typing'); setTimeout(fitToKeyboard, 50); });
+if (vv){ vv.addEventListener('resize', fitToKeyboard); vv.addEventListener('scroll', fitToKeyboard); }
 $('#changeNick').onclick = openIntro;
 
 /* ---------- MENU ---------- */
