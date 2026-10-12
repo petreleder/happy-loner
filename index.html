@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <style>html{box-sizing:border-box;padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px)}</style>
 <title>Happy Loner</title>
@@ -65,7 +65,17 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--yellow);outline
 .bar-btn.start{justify-self:start}
 
 /* ---------- INTRO ---------- */
-#intro{align-items:center;justify-content:center;gap:clamp(20px,5vh,44px);padding:24px var(--gutter)}
+#intro{align-items:center;justify-content:flex-start;gap:clamp(20px,5vh,44px);padding:24px var(--gutter);overflow-y:auto;-webkit-overflow-scrolling:touch}
+/* auto margins centre the content but never push the top out of reach when space runs out */
+#intro > :first-child{margin-top:auto}
+#intro > :last-child{margin-bottom:auto}
+/* keyboard open: smaller logo so the PLAY button stays on screen */
+#intro.typing{gap:16px;padding-top:16px;padding-bottom:16px}
+#intro.typing .lockup{--w:min(130px,34vw)}
+@media (max-height:560px) and (orientation:portrait){
+  #intro{gap:16px;padding-top:16px;padding-bottom:16px}
+  #intro .lockup{--w:min(130px,34vw)}
+}
 /* logo = ball (animated) + wordmark (static); wordmark is 270/366 of the ball's width */
 .lockup{--w:200px;display:flex;flex-direction:column;align-items:center;gap:calc(var(--w)*.05)}
 .lockup img{display:block;height:auto}
@@ -774,6 +784,11 @@ $('#nickForm').addEventListener('submit', e => {
   store.player = v; save(store); $('#nickInput').blur(); show('menu');
 });
 $('#nickInput').addEventListener('input', () => setHelp(STR.nickHelp, false));
+// keep PLAY visible above the on-screen keyboard
+const showPlay = () => { const b = $('#nickForm button'); if (b) b.scrollIntoView({block:'end', behavior:'smooth'}); };
+$('#nickInput').addEventListener('focus', () => { $('#intro').classList.add('typing'); setTimeout(showPlay, 350); });
+$('#nickInput').addEventListener('blur', () => $('#intro').classList.remove('typing'));
+if (window.visualViewport) visualViewport.addEventListener('resize', () => { if (document.activeElement === $('#nickInput')) showPlay(); });
 $('#changeNick').onclick = openIntro;
 
 /* ---------- MENU ---------- */
