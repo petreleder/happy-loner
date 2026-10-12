@@ -295,7 +295,12 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--yellow);outline
 /* desktop: all difficulty cards in one row, game with side panel */
 @media (min-width:900px){
   .carousel{overflow:visible;justify-content:center;padding:28px var(--gutter);scroll-snap-type:none}
-  .card{width:auto;flex:1 1 0;max-width:230px;opacity:1;transform:none;transition:transform .2s, border-color .2s}
+  .card{width:auto;flex:1 1 0;max-width:250px;opacity:1;transform:none;transition:transform .2s, border-color .2s}
+  /* same peg size on every preview, previews share one box so titles line up */
+  .card .art{flex:none;height:150px;align-items:center}
+  .card .art svg{width:calc((var(--c) + .5)*15px);height:calc((var(--r) + .5)*15px);max-width:none;max-height:none}
+  .card p{min-height:4.5em}
+  .card{padding-left:14px;padding-right:14px}
   .card:hover{transform:translateY(-4px);border-color:#5A6B7D}
   .card:not(:has([data-start])) {opacity:.55}
   .dots{display:none}
@@ -457,7 +462,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--yellow);outline
 const MODES = [
   // perfect: kolik kamenů je nejlepší možný výsledek (ze středu evropského plánu jde nejlíp na 2)
   { id:'classic', name:'Classic', active:true, perfect:2,
-    desc:'The 37-hole board from the old Samotář box. Start in the centre, two pegs left is perfect.',
+    desc:'The board from the old Samotář box. Two pegs left is perfect.',
     map:['  ooo  ',
          ' ooooo ',
          'ooooooo',
@@ -466,7 +471,7 @@ const MODES = [
          ' ooooo ',
          '  ooo  '] },
   { id:'cross', name:'Cross', active:true, goal:true,
-    desc:'The English 33-hole cross. Your last peg has to finish in the centre.',
+    desc:'The English cross. Your last peg has to finish in the centre.',
     map:['  ooo  ',
          '  ooo  ',
          'ooooooo',
@@ -475,7 +480,7 @@ const MODES = [
          '  ooo  ',
          '  ooo  '] },
   { id:'rocks', name:'Rocks', active:true,
-    desc:'Rocks are scattered across the board. You can’t jump over them or land on them.',
+    desc:'Rocks block the board. You can’t jump over or onto them.',
     map:[' oooo ',
          'ooxooo',
          'oooooo',
@@ -484,7 +489,7 @@ const MODES = [
          'oooxoo',
          ' oooo '] },
   { id:'diamond', name:'Diamond', active:true,
-    desc:'A 41-hole diamond with four rocks on its sides. The longest game of the set.',
+    desc:'A 41-hole diamond with four rocks. The longest game.',
     map:['    o    ',
          '   ooo   ',
          '  oo.oo  ',
@@ -624,7 +629,7 @@ $('#changeNick').onclick = openIntro;
 /* ---------- MENU ---------- */
 function miniMap(mode){
   const b = parse(mode), u = 16, w = b.cols*u, h = b.rows*u;
-  let s = `<svg viewBox="-4 -4 ${w+8} ${h+8}" aria-hidden="true">`;
+  let s = `<svg viewBox="-4 -4 ${w+8} ${h+8}" style="--c:${b.cols};--r:${b.rows}" aria-hidden="true">`;
   b.cells.forEach(cell => { if(!cell) return;
     s += `<rect x="${cell.c*u-2}" y="${cell.r*u-2}" width="${u+4}" height="${u+4}" rx="4" fill="#425161"/>`; });
   b.cells.forEach((cell,k) => { if(!cell) return;
