@@ -76,6 +76,9 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--yellow);outline
 .lockup svg.ball{display:block;height:auto;overflow:visible}
 #intro .lockup .ball .bob{animation:bobBall 3.2s ease-in-out infinite}
 @keyframes bobBall{50%{transform:translateY(-10px)}}
+/* the ring's shadow on the ball stays still: counter-move it inside the ball's clip */
+#intro .lockup .ball .bob .hl-st22 path{animation:bobStill 3.2s ease-in-out infinite}
+@keyframes bobStill{50%{transform:translateY(10px)}}
 @keyframes bob{50%{transform:translateY(-6px)}}
 .nick{width:100%;max-width:320px;display:flex;flex-direction:column;gap:10px}
 .nick label{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
