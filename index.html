@@ -135,7 +135,8 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--yellow);outline
 .hint.hot circle{stroke:var(--pink);stroke-opacity:1;stroke-dasharray:none}
 @keyframes spin{to{transform:rotate(360deg)}}
 
-.peg{position:absolute;width:calc(var(--p)*.6);height:calc(var(--p)*.6);margin:calc(var(--p)*-.3) 0 0 calc(var(--p)*-.3);
+/* pegs sit on whole pixels and are always on their own layer, so a neighbour's animation can't nudge them */
+.peg{position:absolute;width:var(--ps);height:var(--ps);margin:0;transform:translateZ(0);-webkit-backface-visibility:hidden;backface-visibility:hidden;
   pointer-events:none;transition:left .26s cubic-bezier(.5,0,.3,1), top .26s cubic-bezier(.5,0,.3,1)}
 .peg svg{width:100%;height:100%;display:block;overflow:visible}
 .peg .body{fill:var(--muted);transition:fill .7s ease}
@@ -666,10 +667,12 @@ function layout(){
   const pad = p*4/54, cs = p*50/54;
   board.style.width = (b.cols*p + pad)+'px';
   board.style.height = (b.rows*p + pad)+'px';
-  G.geo = {p,pad,cs};
+  const ps = Math.round(p*.3)*2; board.style.setProperty('--ps', ps+'px');
+  G.geo = {p,pad,cs,ps};
   return G.geo;
 }
 const center = k => { const {p,pad,cs} = G.geo, c = G.b.cells[k]; return {x: pad + c.c*p + cs/2, y: pad + c.r*p + cs/2}; };
+const pegPos = k => { const {x,y} = center(k), h = G.geo.ps/2; return {x: Math.round(x - h), y: Math.round(y - h)}; };
 
 function buildBoard(){
   const board = $('#board'); board.innerHTML = '';
@@ -696,7 +699,7 @@ function buildBoard(){
 }
 function addPeg(k){
   const el = document.createElement('div'); el.className = 'peg'; el.innerHTML = PEG_SVG;
-  const {x,y} = center(k); el.style.left = x+'px'; el.style.top = y+'px';
+  const {x,y} = pegPos(k); el.style.left = x+'px'; el.style.top = y+'px';
   $('#board').insertBefore(el, $('#board .hit')); G.pegEls.set(k, el);
 }
 function repositionAll(){
@@ -744,7 +747,7 @@ async function jump(m){
   const el = G.pegEls.get(m.from), victim = G.pegEls.get(m.over);
   G.hintLayer.querySelectorAll('.hint').forEach(h => { if (+h.dataset.k===m.to) h.classList.add('hot'); else h.remove(); });
   el.classList.remove('sel');
-  const {x,y} = center(m.to);
+  const {x,y} = pegPos(m.to);
   el.classList.add('fly'); el.style.left = x+'px'; el.style.top = y+'px';
   G.pegs.delete(m.from); G.pegs.delete(m.over); G.pegs.add(m.to);
   G.pegEls.delete(m.from); G.pegEls.delete(m.over); G.pegEls.set(m.to, el);
