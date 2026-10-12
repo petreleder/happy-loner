@@ -794,7 +794,14 @@ const fitToKeyboard = () => {
   if (typing){ const b = $('#nickForm button'); b && b.scrollIntoView({block:'nearest'}); }
 };
 $('#nickInput').addEventListener('focus', () => { $('#intro').classList.add('typing'); setTimeout(fitToKeyboard, 50); setTimeout(fitToKeyboard, 400); });
-$('#nickInput').addEventListener('blur', () => { $('#intro').classList.remove('typing'); setTimeout(fitToKeyboard, 50); });
+// layout reset is delayed so a tap on PLAY isn't lost when the keyboard closes and things move
+$('#nickInput').addEventListener('blur', () => setTimeout(() => {
+  if (document.activeElement !== $('#nickInput')){ $('#intro').classList.remove('typing'); fitToKeyboard(); }
+}, 250));
+// tapping PLAY while typing must not first just close the keyboard: keep focus, let the click submit
+['pointerdown','mousedown'].forEach(t => $('#nickForm button').addEventListener(t, e => {
+  if (document.activeElement === $('#nickInput')) e.preventDefault();
+}));
 if (vv){ vv.addEventListener('resize', fitToKeyboard); vv.addEventListener('scroll', fitToKeyboard); }
 $('#changeNick').onclick = openIntro;
 
