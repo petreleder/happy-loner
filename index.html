@@ -307,8 +307,10 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--yellow);outline
   #menu{justify-content:center;gap:8px}
   .menu-head{padding-top:0;padding-bottom:28px}
   .menu-head .wordmark{width:300px}
-  .carousel{flex:none;height:min(420px,52vh);padding:24px var(--gutter)}
-  .card{height:100%}
+  /* desktop: cards size to their content (never clip START), all stretched to the tallest */
+  .carousel{flex:none;height:auto;padding:24px var(--gutter);align-items:stretch}
+  .card{height:auto}
+  .card .btn{margin-top:auto}
   .menu-foot{padding:8px var(--gutter) 0}
 }
 @media (orientation:landscape) and (max-height:560px){
