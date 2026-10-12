@@ -120,7 +120,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--yellow);outline
 @keyframes numOut{to{transform:translateY(80%);opacity:0}}
 @keyframes numIn{from{transform:translateY(-80%);opacity:0}}
 .timer{font-size:13px;font-weight:600;color:var(--dim);font-variant-numeric:tabular-nums;letter-spacing:.06em}
-.stage{grid-area:stage;min-height:0;display:grid;place-items:center;padding:clamp(18px,3.5vh,32px) var(--gutter)}
+.stage{grid-area:stage;min-height:0;display:grid;place-items:center;padding:clamp(34px,calc(3.5vh + 16px),48px) var(--gutter)}
 .board{position:relative}
 .board > svg.frame{position:absolute;inset:0;overflow:visible}
 .cell{position:absolute;border-radius:calc(var(--p)*.15);background:var(--bg)}
