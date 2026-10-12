@@ -221,6 +221,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--yellow);outline
 .best-body{display:grid;grid-template-rows:0fr;transition:grid-template-rows .3s ease}
 .best-card.open .best-body{grid-template-rows:1fr}
 .best-inner{overflow:hidden;min-height:0;padding:0 18px}
+.best-inner .lb{border-top:1px solid #22303F;padding-top:8px}
 .best-card.open .best-inner{padding-bottom:10px}
 .best-inner .sec-title{padding-top:14px;border-top:1px solid #22303F}
 .best-inner .hist li:last-child{border-bottom:0}
@@ -906,7 +907,7 @@ function loadBoard(mode){
     if (!d.top.length){ box.innerHTML = `<p class="empty">${STR.lbEmpty}</p>`; return; }
     let rows = d.top.map(e => `<li class="${e.me?'me':''}"><i>${e.rank}.</i><b>${pad2(e.pegs)}</b><span>${esc(e.player)}${e.me?' <em>(you)</em>':''}</span><time>${fmt(e.time)}</time></li>`);
     if (d.me && d.me.rank > d.top.length) rows.push(`<li class="gap">…</li><li class="me"><i>${d.me.rank}.</i><b>${pad2(d.me.pegs)}</b><span>${esc(d.me.player)} <em>(you)</em></span><time>${fmt(d.me.time)}</time></li>`);
-    box.innerHTML = `<ol class="lb-list">${rows.join('')}</ol><p class="lb-total">${d.total} ${d.total===1?'player':'players'}</p>`;
+    box.innerHTML = `<ol class="lb-list">${rows.join('')}</ol>`;
   };
   const c = lbCache[mode];
   if (c && Date.now() - c.t < 30000) return draw(c.d);
@@ -931,7 +932,7 @@ function renderScores(){
         <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
       </button>
       <div class="best-body" id="hist-${m.id}"><div class="best-inner">
-        <h5 class="sec-title">Leaderboard</h5><div class="lb" data-lb="${m.id}"><p class="empty">Loading…</p></div></div></div>
+        <div class="lb" data-lb="${m.id}"><p class="empty">Loading…</p></div></div></div>
     </section>`; }).join('');
   $('#scoresBody').innerHTML = `<h5 class="sec-title">${esc(store.player)}’s best</h5>${cards}`
     + (store.history.length ? `<button class="danger" id="clearScores">Clear scores</button>` : '');
